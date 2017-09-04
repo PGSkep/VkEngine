@@ -30,3 +30,16 @@
 *.exe
 *.out
 *.app
+
+# Ignore thumbnails created by windows
+Thumbs.db
+
+# Files build by Visual Studio
+[Dd]ebug*/
+[Rr]elease*/
+x64
+x86
+x32
+.vs
+*.suo
+*db
