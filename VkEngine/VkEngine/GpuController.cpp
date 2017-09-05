@@ -3,6 +3,11 @@
 #define VIEW_PROJECTION_UNIFORM_BINDING 0
 #define MODEL_MATRICES_UNIFORM_BINDING 1
 
+#define DIFFUSE_COMBINED_IMAGE_SAMPLER_BINDING 0
+
+#define STAGING_IMAGE_WIDTH_CAP 4096
+#define STAGING_IMAGE_HEIGHT_CAP 4096
+
 void GpuController::Init(VkS::Device* _device)
 {
 	device = _device;
@@ -127,28 +132,41 @@ void GpuController::Init(VkS::Device* _device)
 
 	// DescriptorSetLayout
 	{
+		VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
+		descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		descriptorSetLayoutCreateInfo.pNext = nullptr;
+		descriptorSetLayoutCreateInfo.flags = VK_RESERVED_FOR_FUTURE_USE;
+
 		std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings(2);
 		// view projection
-		descriptorSetLayoutBindings[0].binding = 0;
+		descriptorSetLayoutBindings[0].binding = VIEW_PROJECTION_UNIFORM_BINDING;
 		descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorSetLayoutBindings[0].descriptorCount = 1;
 		descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 		descriptorSetLayoutBindings[0].pImmutableSamplers = nullptr;
 		// models
-		descriptorSetLayoutBindings[1].binding = 1;
+		descriptorSetLayoutBindings[1].binding = MODEL_MATRICES_UNIFORM_BINDING;
 		descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorSetLayoutBindings[1].descriptorCount = 1;
 		descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 		descriptorSetLayoutBindings[1].pImmutableSamplers = nullptr;
 
-		VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
-		descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		descriptorSetLayoutCreateInfo.pNext = nullptr;
-		descriptorSetLayoutCreateInfo.flags = VK_RESERVED_FOR_FUTURE_USE;
 		descriptorSetLayoutCreateInfo.bindingCount = (uint32_t)descriptorSetLayoutBindings.size();
 		descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
-
 		VkU::vkApiResult = vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, nullptr, &mvpDescriptorSetLayout);
+
+		descriptorSetLayoutBindings.clear();
+		descriptorSetLayoutBindings.resize(1);
+		// diffuse
+		descriptorSetLayoutBindings[0].binding = DIFFUSE_COMBINED_IMAGE_SAMPLER_BINDING;
+		descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorSetLayoutBindings[0].descriptorCount = 1;
+		descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		descriptorSetLayoutBindings[0].pImmutableSamplers = nullptr;
+
+		descriptorSetLayoutCreateInfo.bindingCount = (uint32_t)descriptorSetLayoutBindings.size();
+		descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
+		VkU::vkApiResult = vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, nullptr, &diffuseDescriptorSetLayout);
 	}
 
 	// PipelineLayout
@@ -163,12 +181,14 @@ void GpuController::Init(VkS::Device* _device)
 		pushConstantRanges[1].offset = sizeof(float) * 4;
 		pushConstantRanges[1].size = sizeof(float) * 4;
 
+		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { mvpDescriptorSetLayout, diffuseDescriptorSetLayout };
+
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
 		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutCreateInfo.pNext = nullptr;
 		pipelineLayoutCreateInfo.flags = VK_RESERVED_FOR_FUTURE_USE;
-		pipelineLayoutCreateInfo.setLayoutCount = 1;
-		pipelineLayoutCreateInfo.pSetLayouts = &mvpDescriptorSetLayout;
+		pipelineLayoutCreateInfo.setLayoutCount = (uint32_t)descriptorSetLayouts.size();
+		pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
 		pipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstantRanges.size();
 		pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
 
@@ -478,103 +498,157 @@ void GpuController::Init(VkS::Device* _device)
 			VkA::CreateBuffer(stagingBuffer, createBufferInfo);
 		}
 
-		VkU::FillBufferInfo fillBufferInfo;
-		fillBufferInfo.vkDevice = device->handle;
-		fillBufferInfo.dstBuffer = stagingBuffer;
+VkU::FillBufferInfo fillBufferInfo;
+fillBufferInfo.vkDevice = device->handle;
+fillBufferInfo.dstBuffer = stagingBuffer;
 
-		VkU::CopyBufferInfo copyBufferInfo;
-		copyBufferInfo.vkDevice = device->handle;
-		copyBufferInfo.setupFence = setupFence;
-		copyBufferInfo.setupQueue = graphicsQueue;
-		copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
-		copyBufferInfo.srcBuffer = stagingBuffer.handle;
-		copyBufferInfo.copyRegions.resize(1);
-		copyBufferInfo.copyRegions[0].srcOffset = 0;
-		copyBufferInfo.copyRegions[0].dstOffset = 0;
+VkU::CopyBufferInfo copyBufferInfo;
+copyBufferInfo.vkDevice = device->handle;
+copyBufferInfo.setupFence = setupFence;
+copyBufferInfo.setupQueue = graphicsQueue;
+copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+copyBufferInfo.srcBuffer = stagingBuffer.handle;
+copyBufferInfo.copyRegions.resize(1);
+copyBufferInfo.copyRegions[0].srcOffset = 0;
+copyBufferInfo.copyRegions[0].dstOffset = 0;
 
-		// view projection
-		{
-			viewProjectionData[0] = glm::mat4(1);
-			viewProjectionData[1] = glm::perspective(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
+// view projection
+{
+	viewProjectionData[0] = glm::mat4(1);
+	viewProjectionData[1] = glm::perspective(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
 
-			//viewProjectionData[0] = viewProjectionData[0] * viewProjectionData[1];
+	//viewProjectionData[0] = viewProjectionData[0] * viewProjectionData[1];
 
-			createBufferInfo.size = sizeof(viewProjectionData);
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(viewProjectionBuffer, createBufferInfo);
+	createBufferInfo.size = sizeof(viewProjectionData);
+	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	VkA::CreateBuffer(viewProjectionBuffer, createBufferInfo);
 
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(viewProjectionData);
-			fillBufferInfo.data = viewProjectionData;
-			VkA::FillBuffer(fillBufferInfo);
+	fillBufferInfo.offset = 0;
+	fillBufferInfo.size = sizeof(viewProjectionData);
+	fillBufferInfo.data = viewProjectionData;
+	VkA::FillBuffer(fillBufferInfo);
 
-			copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
-			copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
+	copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
+	copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
+	VkA::CopyBuffer(copyBufferInfo);
+}
 
-		// model matrices
-		{
-			ZeroMemory(modelMatricesData, sizeof(modelMatricesData));
-			modelMatricesData[0] = glm::mat4(1);
+// model matrices
+{
+	ZeroMemory(modelMatricesData, sizeof(modelMatricesData));
+	modelMatricesData[0] = glm::mat4(1);
 
-			createBufferInfo.size = sizeof(modelMatricesData);
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(modelMatricesBuffer, createBufferInfo);
+	createBufferInfo.size = sizeof(modelMatricesData);
+	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	VkA::CreateBuffer(modelMatricesBuffer, createBufferInfo);
 
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(modelMatricesData);
-			fillBufferInfo.data = modelMatricesData;
-			VkA::FillBuffer(fillBufferInfo);
+	fillBufferInfo.offset = 0;
+	fillBufferInfo.size = sizeof(modelMatricesData);
+	fillBufferInfo.data = modelMatricesData;
+	VkA::FillBuffer(fillBufferInfo);
 
-			copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
-			copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
+	copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
+	copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
+	VkA::CopyBuffer(copyBufferInfo);
+}
 
-		// vertex buffer
-		{
-			float vertices[] = {
-			//	Position					TexCoord			Normal
-				+0.0f, -0.5f, -1.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
-				+0.5f, +0.5f, -1.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
-				-0.5f, +0.5f, -1.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
+// vertex buffer
+{
+	float vertices[] = {
+		//	Position					TexCoord			Normal
+			+0.0f, -0.5f, -1.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
+			+0.5f, +0.5f, -1.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
+			-0.5f, +0.5f, -1.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
 
-			createBufferInfo.size = sizeof(vertices);
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(vertexBuffer, createBufferInfo);
+	createBufferInfo.size = sizeof(vertices);
+	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	VkA::CreateBuffer(vertexBuffer, createBufferInfo);
 
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(vertices);
-			fillBufferInfo.data = vertices;
-			VkA::FillBuffer(fillBufferInfo);
+	fillBufferInfo.offset = 0;
+	fillBufferInfo.size = sizeof(vertices);
+	fillBufferInfo.data = vertices;
+	VkA::FillBuffer(fillBufferInfo);
 
-			copyBufferInfo.copyRegions[0].size = vertexBuffer.size;
-			copyBufferInfo.dstBuffer = vertexBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
+	copyBufferInfo.copyRegions[0].size = vertexBuffer.size;
+	copyBufferInfo.dstBuffer = vertexBuffer.handle;
+	VkA::CopyBuffer(copyBufferInfo);
+}
 
-		// index buffer
-		{
-			uint16_t indices[] = { 0, 1, 2 };
+// index buffer
+{
+	uint16_t indices[] = { 0, 1, 2 };
 
-			createBufferInfo.size = sizeof(indices);
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(indexBuffer, createBufferInfo);
+	createBufferInfo.size = sizeof(indices);
+	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	VkA::CreateBuffer(indexBuffer, createBufferInfo);
 
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(indices);
-			fillBufferInfo.data = indices;
-			VkA::FillBuffer(fillBufferInfo);
+	fillBufferInfo.offset = 0;
+	fillBufferInfo.size = sizeof(indices);
+	fillBufferInfo.data = indices;
+	VkA::FillBuffer(fillBufferInfo);
 
-			copyBufferInfo.copyRegions[0].size = indexBuffer.size;
-			copyBufferInfo.dstBuffer = indexBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
+	copyBufferInfo.copyRegions[0].size = indexBuffer.size;
+	copyBufferInfo.dstBuffer = indexBuffer.handle;
+	VkA::CopyBuffer(copyBufferInfo);
+}
+	}
+
+	// Texture
+	{}
+	{
+		VkU::CreateTextureInfo createTextureInfo;
+		createTextureInfo.vkDevice = device->handle;
+		createTextureInfo.physicalDevice = device->physicalDevice;
+
+		VkU::FillTextureInfo fillTextureInfo;
+		fillTextureInfo.vkDevice = device->handle;
+
+		VkU::CopyTextureInfo copyTextureInfo;
+		copyTextureInfo.vkDevice = device->handle;
+		copyTextureInfo.setupFence = setupFence;
+		copyTextureInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+		copyTextureInfo.setupQueue = graphicsQueue;
+
+		// Staging
+		createTextureInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
+		createTextureInfo.extent3D = { STAGING_IMAGE_WIDTH_CAP, STAGING_IMAGE_HEIGHT_CAP, 1 };
+		createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		createTextureInfo.tiling = VK_IMAGE_TILING_LINEAR;
+		createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+		VkA::CreateTexture(stagingTextureR8G8B8A8, createTextureInfo);
+
+		// Texture
+		VkS::ImageData imageData;
+		imageData.data = nullptr;
+		VkU::LoadImageDataInfo loadImageDataInfo;
+
+		loadImageDataInfo.fileName = "Textures/test.tga";
+		VkA::LoadImageData(imageData, loadImageDataInfo);
+
+		createTextureInfo.format = imageData.format;
+		createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
+		createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+		VkA::CreateTexture(texture, createTextureInfo);
+
+		fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
+		fillTextureInfo.width = imageData.extent2D.width;
+		fillTextureInfo.height = imageData.extent2D.height;
+		fillTextureInfo.size = imageData.size;
+		fillTextureInfo.data = imageData.data;
+		VkA::FillTexture(fillTextureInfo);
+		delete[] imageData.data;
+
+		copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
+		copyTextureInfo.dstTexture = texture;
+		VkA::CopyTexture(copyTextureInfo);
 	}
 
 	// Sampler
@@ -605,15 +679,17 @@ void GpuController::Init(VkS::Device* _device)
 
 	// DescriptorPool
 	{
-		std::vector<VkDescriptorPoolSize> descriptorPoolSizes(1);
+		std::vector<VkDescriptorPoolSize> descriptorPoolSizes(2);
 		descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorPoolSizes[0].descriptorCount = 2;
+		descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorPoolSizes[1].descriptorCount = 1;
 
 		VkDescriptorPoolCreateInfo descriptorPoolCreateInfo;
 		descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		descriptorPoolCreateInfo.pNext = nullptr;
 		descriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		descriptorPoolCreateInfo.maxSets = 1;
+		descriptorPoolCreateInfo.maxSets = 2;
 		descriptorPoolCreateInfo.poolSizeCount = (uint32_t)descriptorPoolSizes.size();
 		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
 
@@ -622,7 +698,14 @@ void GpuController::Init(VkS::Device* _device)
 
 	// DescriptorSets
 	{
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { mvpDescriptorSetLayout };
+		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {
+			mvpDescriptorSetLayout,
+			diffuseDescriptorSetLayout,
+		};
+		std::vector<VkDescriptorSet> descriptorSets = {
+			mvpDescriptorSet,
+			diffuseDescriptorSet,
+		};
 
 		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
 		descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -631,12 +714,15 @@ void GpuController::Init(VkS::Device* _device)
 		descriptorSetAllocateInfo.descriptorSetCount = (uint32_t)descriptorSetLayouts.size();
 		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
-		vkAllocateDescriptorSets(device->handle, &descriptorSetAllocateInfo, &descriptorSet);
+		vkAllocateDescriptorSets(device->handle, &descriptorSetAllocateInfo, descriptorSets.data());
+
+		mvpDescriptorSet = descriptorSets[0];
+		diffuseDescriptorSet = descriptorSets[1];
 	}
 
 	// UpdateDescriptorSets
 	{
-		std::vector<VkWriteDescriptorSet> writeDescriptorSet(2);
+		std::vector<VkWriteDescriptorSet> writeDescriptorSet(3);
 
 		// View Projection
 		VkDescriptorBufferInfo viewProjectionDescriptorBufferInfo;
@@ -646,7 +732,7 @@ void GpuController::Init(VkS::Device* _device)
 
 		writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[0].pNext = nullptr;
-		writeDescriptorSet[0].dstSet = descriptorSet;
+		writeDescriptorSet[0].dstSet = mvpDescriptorSet;
 		writeDescriptorSet[0].dstBinding = VIEW_PROJECTION_UNIFORM_BINDING;
 		writeDescriptorSet[0].dstArrayElement = 0;
 		writeDescriptorSet[0].descriptorCount = 1;
@@ -663,7 +749,7 @@ void GpuController::Init(VkS::Device* _device)
 
 		writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[1].pNext = nullptr;
-		writeDescriptorSet[1].dstSet = descriptorSet;
+		writeDescriptorSet[1].dstSet = mvpDescriptorSet;
 		writeDescriptorSet[1].dstBinding = MODEL_MATRICES_UNIFORM_BINDING;
 		writeDescriptorSet[1].dstArrayElement = 0;
 		writeDescriptorSet[1].descriptorCount = 1;
@@ -671,6 +757,23 @@ void GpuController::Init(VkS::Device* _device)
 		writeDescriptorSet[1].pImageInfo = nullptr;
 		writeDescriptorSet[1].pBufferInfo = &modelMatricesDescriptorBufferInfo;
 		writeDescriptorSet[1].pTexelBufferView = nullptr;
+
+		// diffuse texture
+		VkDescriptorImageInfo diffuseDescriptorImageInfo;
+		diffuseDescriptorImageInfo.sampler = sampler;
+		diffuseDescriptorImageInfo.imageView = texture.view;
+		diffuseDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		
+		writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet[2].pNext = nullptr;
+		writeDescriptorSet[2].dstSet = diffuseDescriptorSet;
+		writeDescriptorSet[2].dstBinding = DIFFUSE_COMBINED_IMAGE_SAMPLER_BINDING;
+		writeDescriptorSet[2].dstArrayElement = 0;
+		writeDescriptorSet[2].descriptorCount = 1;
+		writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescriptorSet[2].pImageInfo = &diffuseDescriptorImageInfo;
+		writeDescriptorSet[2].pBufferInfo = nullptr;
+		writeDescriptorSet[2].pTexelBufferView = nullptr;
 
 		vkUpdateDescriptorSets(device->handle, (uint32_t)writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
 	}
@@ -713,7 +816,9 @@ void GpuController::Draw(VkS::Window* _window, uint32_t _pipelineIndex)
 		VkDeviceSize offset = 0;
 
 		vkCmdBindPipeline(_window->commandBuffers[_window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelines[_pipelineIndex]);
-		vkCmdBindDescriptorSets(_window->commandBuffers[_window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush4Vert4FragPipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+		std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseDescriptorSet };
+		vkCmdBindDescriptorSets(_window->commandBuffers[_window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush4Vert4FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
 		// vkCmdPushConstants(swapchain.commandBuffers[swapchain.imageIndex], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vertexShaderPushConstantData), &vertexShaderPushConstantData);
 
 		vkCmdBindVertexBuffers(_window->commandBuffers[_window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
@@ -816,6 +921,15 @@ void GpuController::ShutDown()
 	// Sampler
 	vkDestroySampler(device->handle, sampler, nullptr);
 
+	// Textures
+	vkDestroyImageView(device->handle, stagingTextureR8G8B8A8.view, nullptr);
+	vkDestroyImage(device->handle, stagingTextureR8G8B8A8.handle, nullptr);
+	vkFreeMemory(device->handle, stagingTextureR8G8B8A8.memory, nullptr);
+
+	vkDestroyImageView(device->handle, texture.view, nullptr);
+	vkDestroyImage(device->handle, texture.handle, nullptr);
+	vkFreeMemory(device->handle, texture.memory, nullptr);
+
 	// Buffers
 	vkDestroyBuffer(device->handle, indexBuffer.handle, nullptr);
 	vkFreeMemory(device->handle, indexBuffer.memory, nullptr);
@@ -845,6 +959,7 @@ void GpuController::ShutDown()
 	vkDestroyPipelineLayout(device->handle, mvpPush4Vert4FragPipelineLayout, nullptr);
 
 	// DescriptorSetLayout
+	vkDestroyDescriptorSetLayout(device->handle, diffuseDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device->handle, mvpDescriptorSetLayout, nullptr);
 
 	/// Window Resources

@@ -42,4 +42,5 @@ x86
 x32
 .vs
 *.suo
-*db
+*.db
+*.user

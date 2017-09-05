@@ -4,6 +4,19 @@
 
 #include<fstream>
 
+uint32_t VkA::FindMemoryTypeIndex(VkS::Instance::PhysicalDevice* _physicalDevice, VkMemoryRequirements _memoryRequirements, VkMemoryPropertyFlags _memoryPropertyFlags)
+{
+	for (uint32_t i = 0; i != _physicalDevice->memoryProperties.memoryTypeCount; ++i)
+	{
+		if ((_memoryRequirements.memoryTypeBits & (1 << i)) && (_physicalDevice->memoryProperties.memoryTypes[i].propertyFlags & _memoryPropertyFlags) == _memoryPropertyFlags)
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 VkS::VKU_RESULT VkA::CreateInstance(VkS::Instance & _instance, VkU::CreateInstanceInfo _createInstanceInfo)
 {
 	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
@@ -167,8 +180,8 @@ VkS::VKU_RESULT VkA::CreateOSWindow(VkS::Window & _window, VkU::CreateWindowInfo
 		_window.name,
 		_createWindowInfo.title,
 		dwStyle | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-		0,
-		0,
+		_createWindowInfo.x,
+		_createWindowInfo.y,
 		windowRect.right - windowRect.left,
 		windowRect.bottom - windowRect.top,
 		NULL,
@@ -179,9 +192,16 @@ VkS::VKU_RESULT VkA::CreateOSWindow(VkS::Window & _window, VkU::CreateWindowInfo
 	if (_window.hWnd == NULL)
 		return VkS::VKU_WINDOW_WIN32_HWND_IS_NULL;
 
-	uint32_t x = (screenWidth - windowRect.right) / 2;
-	uint32_t y = (screenHeight - windowRect.bottom) / 2;
-	SetWindowPos(_window.hWnd, 0, x, y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+	uint32_t x = _createWindowInfo.x;
+	uint32_t y = _createWindowInfo.y;
+	if (_createWindowInfo.x == ~0U)
+		x = (uint32_t)((screenWidth - windowRect.right) * 0.5f);
+
+	if (_createWindowInfo.y == ~0U)
+		y = (uint32_t)((screenHeight - windowRect.bottom) * 0.5f);
+
+	if (_createWindowInfo.x == ~0U || _createWindowInfo.y == ~0U)
+		SetWindowPos(_window.hWnd, 0, x, y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
 	ShowWindow(_window.hWnd, SW_SHOW);
 	SetForegroundWindow(_window.hWnd);
@@ -772,103 +792,103 @@ VkS::VKU_RESULT VkA::CreateWindowResources(VkS::Window& _window, VkU::CreateWind
 		imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-imageViewCreateInfo.subresourceRange.layerCount = 1;
-imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-imageViewCreateInfo.subresourceRange.levelCount = 1;
+		imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+		imageViewCreateInfo.subresourceRange.layerCount = 1;
+		imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+		imageViewCreateInfo.subresourceRange.levelCount = 1;
 
-VkU::vkApiResult = vkCreateImageView(_createWindowResourcesInfo.vkDevice, &imageViewCreateInfo, nullptr, &_window.depthImage->view);
-switch (VkU::vkApiResult)
-{
-case VK_SUCCESS:					break;
-case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
-case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
-default:							vkuResult = VkS::VKU_UNKNOWN; break;
-}
+		VkU::vkApiResult = vkCreateImageView(_createWindowResourcesInfo.vkDevice, &imageViewCreateInfo, nullptr, &_window.depthImage->view);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
 
-VkU::vkApiResult = vkWaitForFences(_createWindowResourcesInfo.vkDevice, 1, &_createWindowResourcesInfo.setupFence, VK_TRUE, ~0U);
-switch (VkU::vkApiResult)
-{
-case VK_SUCCESS:					break;
-case VK_TIMEOUT:					vkuResult = VkS::VKU_TIMEOUT;
-case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
-case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
-case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
-default:							vkuResult = VkS::VKU_UNKNOWN; break;
-}
+		VkU::vkApiResult = vkWaitForFences(_createWindowResourcesInfo.vkDevice, 1, &_createWindowResourcesInfo.setupFence, VK_TRUE, ~0U);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_TIMEOUT:					vkuResult = VkS::VKU_TIMEOUT;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
 
-VkU::vkApiResult = vkResetFences(_createWindowResourcesInfo.vkDevice, 1, &_createWindowResourcesInfo.setupFence);
-switch (VkU::vkApiResult)
-{
-case VK_SUCCESS:					break;
-case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
-case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
-default:							vkuResult = VkS::VKU_UNKNOWN; break;
-}
+		VkU::vkApiResult = vkResetFences(_createWindowResourcesInfo.vkDevice, 1, &_createWindowResourcesInfo.setupFence);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
 
-VkCommandBufferBeginInfo commandBufferBeginInfo;
-commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-commandBufferBeginInfo.pNext = nullptr;
-commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-commandBufferBeginInfo.pInheritanceInfo = nullptr;
-VkU::vkApiResult = vkBeginCommandBuffer(_createWindowResourcesInfo.setupCommandBuffer, &commandBufferBeginInfo);
-switch (VkU::vkApiResult)
-{
-case VK_SUCCESS:					break;
-case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
-case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
-default:							vkuResult = VkS::VKU_UNKNOWN; break;
-}
+		VkCommandBufferBeginInfo commandBufferBeginInfo;
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.pNext = nullptr;
+		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+		VkU::vkApiResult = vkBeginCommandBuffer(_createWindowResourcesInfo.setupCommandBuffer, &commandBufferBeginInfo);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
 
-VkImageMemoryBarrier imageMemoryBarrier;
-imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-imageMemoryBarrier.pNext = nullptr;
-imageMemoryBarrier.srcAccessMask = 0;
-imageMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-imageMemoryBarrier.image = _window.depthImage->handle;
-imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
-imageMemoryBarrier.subresourceRange.levelCount = 1;
-imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-imageMemoryBarrier.subresourceRange.layerCount = 1;
+		VkImageMemoryBarrier imageMemoryBarrier;
+		imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageMemoryBarrier.pNext = nullptr;
+		imageMemoryBarrier.srcAccessMask = 0;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageMemoryBarrier.image = _window.depthImage->handle;
+		imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+		imageMemoryBarrier.subresourceRange.levelCount = 1;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemoryBarrier.subresourceRange.layerCount = 1;
 
-vkCmdPipelineBarrier(_createWindowResourcesInfo.setupCommandBuffer, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-//vkCmdPipelineBarrier(_swapchainResourcesInfo.commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+		vkCmdPipelineBarrier(_createWindowResourcesInfo.setupCommandBuffer, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+		//vkCmdPipelineBarrier(_swapchainResourcesInfo.commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
-VkU::vkApiResult = vkEndCommandBuffer(_createWindowResourcesInfo.setupCommandBuffer);
-switch (VkU::vkApiResult)
-{
-case VK_SUCCESS:					break;
-case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
-case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
-default:							vkuResult = VkS::VKU_UNKNOWN; break;
-}
+		VkU::vkApiResult = vkEndCommandBuffer(_createWindowResourcesInfo.setupCommandBuffer);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
 
-VkSubmitInfo submitInfo;
-submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-submitInfo.pNext = nullptr;
-submitInfo.waitSemaphoreCount = 0;
-submitInfo.pWaitSemaphores = nullptr;
-submitInfo.pWaitDstStageMask = nullptr;
-submitInfo.commandBufferCount = 1;
-submitInfo.pCommandBuffers = &_createWindowResourcesInfo.setupCommandBuffer;
-submitInfo.signalSemaphoreCount = 0;
-submitInfo.pSignalSemaphores = nullptr;
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = nullptr;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &_createWindowResourcesInfo.setupCommandBuffer;
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
 
-VkU::vkApiResult = vkQueueSubmit(_createWindowResourcesInfo.setupQueue, 1, &submitInfo, _createWindowResourcesInfo.setupFence);
-switch (VkU::vkApiResult)
-{
-case VK_SUCCESS:					break;
-case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
-case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
-case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
-default:							vkuResult = VkS::VKU_UNKNOWN; break;
-}
+		VkU::vkApiResult = vkQueueSubmit(_createWindowResourcesInfo.setupQueue, 1, &submitInfo, _createWindowResourcesInfo.setupFence);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
 	}
 
 	// framebuffers
@@ -1172,6 +1192,346 @@ VkS::VKU_RESULT VkA::CopyBuffer(VkU::CopyBufferInfo _copyBufferInfo)
 	submitInfo.signalSemaphoreCount = 0;
 	submitInfo.pSignalSemaphores = nullptr;
 	VkU::vkApiResult = vkQueueSubmit(_copyBufferInfo.setupQueue, 1, &submitInfo, _copyBufferInfo.setupFence);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	return vkuResult;
+}
+
+VkS::VKU_RESULT VkA::LoadImageData(VkS::ImageData& _imageData, VkU::LoadImageDataInfo _loadImageDataInfo)
+{
+	if (_imageData.data != nullptr)
+		delete[] _imageData.data;
+	_imageData.data = nullptr;
+	_imageData.extent2D.width = 0;
+	_imageData.extent2D.height = 0;
+	_imageData.format = VK_FORMAT_UNDEFINED;
+
+	FILE* fTGA;
+	fTGA = fopen(_loadImageDataInfo.fileName, "rb");
+
+	if (fTGA == NULL)
+		return VkS::VKU_IMAGE_FILE_NOT_OPENED;
+
+	uint8_t header[12];
+	if (fread(&header, sizeof(header), 1, fTGA) == 0)
+		return VkS::VKU_IMAGE_FILE_READING_FAILURE;
+
+	//uint8_t compressedTGAcompare[12] = { 0,0,10,0,0,0,0,0,0,0,0,0 };
+	uint8_t uncompressedTGAcompare[12] = { 0,0,2,0,0,0,0,0,0,0,0,0 };
+
+	// Get data
+	if (memcmp(uncompressedTGAcompare, &header, sizeof(header)) == 0)
+	{
+		uint8_t header[6];
+
+		if (fread(header, sizeof(header), 1, fTGA) == 0)
+			return VkS::VKU_IMAGE_FILE_READING_FAILURE;
+
+		_imageData.extent2D.width = header[1] * 256 + header[0];
+		_imageData.extent2D.height = header[3] * 256 + header[2];
+		uint8_t bpp = header[4];
+
+		if (_imageData.extent2D.width == 0 || _imageData.extent2D.height == 0 || (bpp != 24 && bpp != 32))
+			return VkS::VKU_IMAGE_FILE_UNEXPECTED_FORMAT;
+
+		_imageData.size = _imageData.extent2D.width * _imageData.extent2D.height;
+		if (bpp == 24)
+		{
+			_imageData.format = VK_FORMAT_B8G8R8_UNORM;
+			_imageData.size *= 3;
+		}
+		else if (bpp == 32)
+		{
+			_imageData.format = VK_FORMAT_B8G8R8A8_UNORM;
+			_imageData.size *= 4;
+		}
+
+		_imageData.data = new uint8_t[_imageData.size];
+		if (fread(_imageData.data, 1, _imageData.size, fTGA) != _imageData.size)
+		{
+			delete[] _imageData.data;
+			_imageData.data = nullptr;
+			return VkS::VKU_IMAGE_FILE_READING_FAILURE;
+		}
+	}
+	else return VkS::VKU_IMAGE_FILE_NOT_UNCOMPRESSED_TGA;
+
+	return VkS::VKU_SUCCESS;
+}
+VkS::VKU_RESULT VkA::CreateTexture(VkS::Texture & _texture, VkU::CreateTextureInfo _createTextureInfo)
+{
+	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
+
+	_texture.extent.width = _createTextureInfo.extent3D.width;
+	_texture.extent.height = _createTextureInfo.extent3D.height;
+
+	VkImageCreateInfo imageCreateInfo;
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.pNext = nullptr;
+	imageCreateInfo.flags = 0;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.format = _createTextureInfo.format;
+	imageCreateInfo.extent = _createTextureInfo.extent3D;
+	imageCreateInfo.mipLevels = 1;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.tiling = VK_IMAGE_TILING_LINEAR;
+	imageCreateInfo.usage = _createTextureInfo.usage;
+	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageCreateInfo.queueFamilyIndexCount = 0;
+	imageCreateInfo.pQueueFamilyIndices = nullptr;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+	VkU::vkApiResult = vkCreateImage(_createTextureInfo.vkDevice, &imageCreateInfo, nullptr, &_texture.handle);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	VkMemoryRequirements memoryRequirements;
+	vkGetImageMemoryRequirements(_createTextureInfo.vkDevice, _texture.handle, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo;
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.pNext = nullptr;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = VkA::FindMemoryTypeIndex(_createTextureInfo.physicalDevice, memoryRequirements, _createTextureInfo.memoryPropertyFlags);
+
+	VkU::vkApiResult = vkAllocateMemory(_createTextureInfo.vkDevice, &memoryAllocateInfo, nullptr, &_texture.memory);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	case VK_ERROR_TOO_MANY_OBJECTS:		return VkS::VKU_TOO_MANY_OBJECTS;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	VkU::vkApiResult = vkBindImageMemory(_createTextureInfo.vkDevice, _texture.handle, _texture.memory, 0);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	VkImageViewCreateInfo imageViewCreateInfo;
+	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.pNext = nullptr;
+	imageViewCreateInfo.flags = VK_RESERVED_FOR_FUTURE_USE;
+	imageViewCreateInfo.image = _texture.handle;
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format = _createTextureInfo.format;
+	imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.subresourceRange.aspectMask = _createTextureInfo.aspect;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount = 1;
+	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	imageViewCreateInfo.subresourceRange.levelCount = 1;
+
+	VkU::vkApiResult = vkCreateImageView(_createTextureInfo.vkDevice, &imageViewCreateInfo, nullptr, &_texture.view);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	return vkuResult;
+}
+VkS::VKU_RESULT VkA::FillTexture(VkU::FillTextureInfo _fillTextureInfo)
+{
+	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
+
+	VkImageSubresource imageSubresource;
+	imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageSubresource.mipLevel = 0;
+	imageSubresource.arrayLayer = 0;
+
+	VkSubresourceLayout subresourceLayout;
+	vkGetImageSubresourceLayout(_fillTextureInfo.vkDevice, _fillTextureInfo.dstTexture.handle, &imageSubresource, &subresourceLayout);
+
+	void* mappedData;
+	VkU::vkApiResult = vkMapMemory(_fillTextureInfo.vkDevice, _fillTextureInfo.dstTexture.memory, 0, _fillTextureInfo.size, 0, &mappedData);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	case VK_ERROR_MEMORY_MAP_FAILED:	return VkS::VKU_MEMORY_MAP_FAILED;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	if (subresourceLayout.rowPitch == _fillTextureInfo.width * 4)
+		memcpy(mappedData, _fillTextureInfo.data, _fillTextureInfo.size);
+	else
+	{
+		uint8_t* _data8b = (uint8_t*)_fillTextureInfo.data;
+		uint8_t* data8b = (uint8_t*)mappedData;
+
+		for (uint32_t y = 0; y < _fillTextureInfo.height; y++)
+			memcpy(&data8b[y * subresourceLayout.rowPitch], &_data8b[y * _fillTextureInfo.width * 4], _fillTextureInfo.width * 4);
+	}
+
+	vkUnmapMemory(_fillTextureInfo.vkDevice, _fillTextureInfo.dstTexture.memory);
+
+	return vkuResult;
+}
+/// TODO: unify memory barrier call
+VkS::VKU_RESULT VkA::CopyTexture(VkU::CopyTextureInfo _copyTextureInfo)
+{
+	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
+
+	VkU::vkApiResult = vkWaitForFences(_copyTextureInfo.vkDevice, 1, &_copyTextureInfo.setupFence, VK_TRUE, -1);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_TIMEOUT:					return VkS::VKU_TIMEOUT;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+	VkU::vkApiResult = vkResetFences(_copyTextureInfo.vkDevice, 1, &_copyTextureInfo.setupFence);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	VkCommandBufferBeginInfo commandBufferBeginInfo;
+	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	commandBufferBeginInfo.pNext = nullptr;
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	commandBufferBeginInfo.pInheritanceInfo = nullptr;
+	VkU::vkApiResult = vkBeginCommandBuffer(_copyTextureInfo.setupCommandBuffer, &commandBufferBeginInfo);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	VkImageMemoryBarrier sourceImageMemoryBarrier;
+	sourceImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	sourceImageMemoryBarrier.pNext = nullptr;
+	sourceImageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+	sourceImageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	sourceImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+	sourceImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	sourceImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	sourceImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	sourceImageMemoryBarrier.image = _copyTextureInfo.srcTexture.handle;
+	sourceImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	sourceImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	sourceImageMemoryBarrier.subresourceRange.levelCount = 1;
+	sourceImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	sourceImageMemoryBarrier.subresourceRange.layerCount = 1;
+	vkCmdPipelineBarrier(_copyTextureInfo.setupCommandBuffer, VK_PIPELINE_STAGE_HOST_BIT , VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &sourceImageMemoryBarrier);
+
+	VkImageMemoryBarrier dstImageMemoryBarrier;
+	dstImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	dstImageMemoryBarrier.pNext = nullptr;
+	dstImageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+	dstImageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	dstImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+	dstImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	dstImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	dstImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	dstImageMemoryBarrier.image = _copyTextureInfo.dstTexture.handle;
+	dstImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	dstImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	dstImageMemoryBarrier.subresourceRange.levelCount = 1;
+	dstImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	dstImageMemoryBarrier.subresourceRange.layerCount = 1;
+	vkCmdPipelineBarrier(_copyTextureInfo.setupCommandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &dstImageMemoryBarrier);
+
+	VkImageSubresourceLayers imageSubresourceLayers;
+	imageSubresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageSubresourceLayers.mipLevel = 0;
+	imageSubresourceLayers.baseArrayLayer = 0;
+	imageSubresourceLayers.layerCount = 1;
+
+	VkImageCopy imageCopy;
+	imageCopy.srcSubresource = imageSubresourceLayers;
+	imageCopy.srcOffset.x = 0;
+	imageCopy.srcOffset.y = 0;
+	imageCopy.srcOffset.z = 0;
+	imageCopy.dstSubresource = imageSubresourceLayers;
+	imageCopy.dstOffset.x = 0;
+	imageCopy.dstOffset.y = 0;
+	imageCopy.dstOffset.z = 0;
+	imageCopy.extent.width = _copyTextureInfo.dstTexture.extent.width;
+	imageCopy.extent.height = _copyTextureInfo.dstTexture.extent.height;
+	imageCopy.extent.depth = 1;
+
+	vkCmdCopyImage(_copyTextureInfo.setupCommandBuffer, _copyTextureInfo.srcTexture.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, _copyTextureInfo.dstTexture.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+
+	VkImageMemoryBarrier finalMemoryBarrier;
+	finalMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	finalMemoryBarrier.pNext = nullptr;
+	finalMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	finalMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	finalMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	finalMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	finalMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	finalMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	finalMemoryBarrier.image = _copyTextureInfo.dstTexture.handle;
+	finalMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	finalMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	finalMemoryBarrier.subresourceRange.levelCount = 1;
+	finalMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	finalMemoryBarrier.subresourceRange.layerCount = 1;
+	vkCmdPipelineBarrier(_copyTextureInfo.setupCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &finalMemoryBarrier);
+
+	VkU::vkApiResult = vkEndCommandBuffer(_copyTextureInfo.setupCommandBuffer);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	VkSubmitInfo submitInfo;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = nullptr;
+	submitInfo.waitSemaphoreCount = 0;
+	submitInfo.pWaitSemaphores = nullptr;
+	submitInfo.pWaitDstStageMask = nullptr;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &_copyTextureInfo.setupCommandBuffer;
+	submitInfo.signalSemaphoreCount = 0;
+	submitInfo.pSignalSemaphores = nullptr;
+	VkU::vkApiResult = vkQueueSubmit(_copyTextureInfo.setupQueue, 1, &submitInfo, _copyTextureInfo.setupFence);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	// Wait for textures to be transfered
+	VkU::vkApiResult = vkQueueWaitIdle(_copyTextureInfo.setupQueue);
 	switch (VkU::vkApiResult)
 	{
 	case VK_SUCCESS:					break;

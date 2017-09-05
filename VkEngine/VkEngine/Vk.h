@@ -47,6 +47,11 @@ namespace VkS
 		VKU_SHADER_FILE_NOT_OPENED,
 		VKU_MEMORY_MAP_FAILED,
 		VKU_FRAGMENTED_POOL,
+
+		VKU_IMAGE_FILE_NOT_OPENED,
+		VKU_IMAGE_FILE_READING_FAILURE,
+		VKU_IMAGE_FILE_NOT_UNCOMPRESSED_TGA,
+		VKU_IMAGE_FILE_UNEXPECTED_FORMAT,
 	};
 
 	// GpuController
@@ -55,6 +60,7 @@ namespace VkS
 		VkImage handle;
 		VkDeviceMemory memory;
 		VkImageView view;
+		VkExtent2D extent;
 	};
 	struct Buffer
 	{
@@ -110,6 +116,13 @@ namespace VkS
 		};
 		std::vector<PipelineColorBlendAttachmentState>			pipelineColorBlendAttachmentStates;
 		std::vector<VkPipelineColorBlendStateCreateInfo>		pipelineColorBlendStateCreateInfos;
+	};
+	struct ImageData
+	{
+		VkExtent2D extent2D;
+		VkDeviceSize size;
+		VkFormat format;
+		void* data;
 	};
 
 	// Gpu
@@ -211,6 +224,8 @@ namespace VkU
 	};
 	struct CreateWindowInfo
 	{
+		int x;
+		int y;
 		int width;
 		int height;
 		const char* title;
@@ -297,10 +312,47 @@ namespace VkU
 		std::vector<VkBufferCopy> copyRegions;
 		VkBuffer dstBuffer;
 	};
+
+	struct LoadImageDataInfo
+	{
+		const char* fileName;
+	};
+	struct CreateTextureInfo
+	{
+		VkDevice vkDevice;
+		VkS::Instance::PhysicalDevice* physicalDevice;
+		VkFormat format;
+		VkExtent3D extent3D;
+		VkImageUsageFlags usage;
+		VkImageTiling tiling;
+		VkMemoryPropertyFlags memoryPropertyFlags;
+		VkImageAspectFlags aspect;
+	};
+	struct FillTextureInfo
+	{
+		VkDevice vkDevice;
+		VkS::Texture dstTexture;
+		uint32_t width;
+		uint32_t height;
+		VkDeviceSize size;
+		void* data;
+	};
+	struct CopyTextureInfo
+	{
+		VkDevice vkDevice;
+		VkFence setupFence;
+		VkCommandBuffer setupCommandBuffer;
+		VkQueue setupQueue;
+		VkS::Texture srcTexture;
+		VkS::Texture dstTexture;
+	};
 }
 
 namespace VkA
 {
+	// Util
+	uint32_t FindMemoryTypeIndex(VkS::Instance::PhysicalDevice* _physicalDevice, VkMemoryRequirements _memoryRequirements, VkMemoryPropertyFlags _memoryPropertyFlags);
+
 	// Gpu
 #if _DEBUG
 	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugReportCallback(VkDebugReportFlagsEXT _flags, VkDebugReportObjectTypeEXT _objType, uint64_t _obj, size_t _location, int32_t _code, const char* _layerPrefix, const char* _msg, void* _userData)
@@ -391,6 +443,11 @@ namespace VkA
 	VkS::VKU_RESULT CreateBuffer(VkS::Buffer& _buffer, VkU::CreateBufferInfo _createBufferInfo);
 	VkS::VKU_RESULT FillBuffer(VkU::FillBufferInfo _fillBufferInfo);
 	VkS::VKU_RESULT CopyBuffer(VkU::CopyBufferInfo _copyBufferInfo);
+
+	VkS::VKU_RESULT LoadImageData(VkS::ImageData& _imageData, VkU::LoadImageDataInfo _loadImageDataInfo);
+	VkS::VKU_RESULT CreateTexture(VkS::Texture& _texture, VkU::CreateTextureInfo _createTextureInfo);
+	VkS::VKU_RESULT FillTexture(VkU::FillTextureInfo _fillTextureInfo);
+	VkS::VKU_RESULT CopyTexture(VkU::CopyTextureInfo _copyTextureInfo);
 }
 
 #endif

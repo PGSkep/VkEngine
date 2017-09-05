@@ -31,6 +31,8 @@ void Gpu::Init()
 	{
 		windows.resize(2);
 		VkU::CreateWindowInfo createWindowInfo;
+		createWindowInfo.x = 0;
+		createWindowInfo.y = ~0U;
 		createWindowInfo.width = 800;
 		createWindowInfo.height = 600;
 		createWindowInfo.title = "title";
@@ -40,6 +42,8 @@ void Gpu::Init()
 		createWindowInfo.hasDepthBuffer = true;
 		VkA::CreateOSWindow(windows[0], createWindowInfo);
 
+		createWindowInfo.x = createWindowInfo.width;
+		createWindowInfo.y = ~0U;
 		createWindowInfo.title = "title2";
 		createWindowInfo.name = "name2";
 		VkA::CreateOSWindow(windows[1], createWindowInfo);
