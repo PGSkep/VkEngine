@@ -498,103 +498,105 @@ void GpuController::Init(VkS::Device* _device)
 			VkA::CreateBuffer(stagingBuffer, createBufferInfo);
 		}
 
-VkU::FillBufferInfo fillBufferInfo;
-fillBufferInfo.vkDevice = device->handle;
-fillBufferInfo.dstBuffer = stagingBuffer;
+		VkU::FillBufferInfo fillBufferInfo;
+		fillBufferInfo.vkDevice = device->handle;
+		fillBufferInfo.dstBuffer = stagingBuffer;
+		
+		VkU::CopyBufferInfo copyBufferInfo;
+		copyBufferInfo.vkDevice = device->handle;
+		copyBufferInfo.setupFence = setupFence;
+		copyBufferInfo.setupQueue = graphicsQueue;
+		copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+		copyBufferInfo.srcBuffer = stagingBuffer.handle;
+		copyBufferInfo.copyRegions.resize(1);
+		copyBufferInfo.copyRegions[0].srcOffset = 0;
+		copyBufferInfo.copyRegions[0].dstOffset = 0;
+		
+		// view projection
+		{
+			//viewProjectionData[0] = glm::mat4(1);
+			//viewProjectionData[1] = glm::perspective(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
+			viewProjectionData[0] = Math3D::GetIdentity();
+			viewProjectionData[1] = Math3D::GetPerspectiveMatrix(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
+		
+			//viewProjectionData[0] = viewProjectionData[0] * viewProjectionData[1];
+		
+			createBufferInfo.size = sizeof(viewProjectionData);
+			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			VkA::CreateBuffer(viewProjectionBuffer, createBufferInfo);
+		
+			fillBufferInfo.offset = 0;
+			fillBufferInfo.size = sizeof(viewProjectionData);
+			fillBufferInfo.data = viewProjectionData;
+			VkA::FillBuffer(fillBufferInfo);
+		
+			copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
+			copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
+			VkA::CopyBuffer(copyBufferInfo);
+		}
 
-VkU::CopyBufferInfo copyBufferInfo;
-copyBufferInfo.vkDevice = device->handle;
-copyBufferInfo.setupFence = setupFence;
-copyBufferInfo.setupQueue = graphicsQueue;
-copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
-copyBufferInfo.srcBuffer = stagingBuffer.handle;
-copyBufferInfo.copyRegions.resize(1);
-copyBufferInfo.copyRegions[0].srcOffset = 0;
-copyBufferInfo.copyRegions[0].dstOffset = 0;
-
-// view projection
-{
-	viewProjectionData[0] = glm::mat4(1);
-	viewProjectionData[1] = glm::perspective(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
-
-	//viewProjectionData[0] = viewProjectionData[0] * viewProjectionData[1];
-
-	createBufferInfo.size = sizeof(viewProjectionData);
-	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	VkA::CreateBuffer(viewProjectionBuffer, createBufferInfo);
-
-	fillBufferInfo.offset = 0;
-	fillBufferInfo.size = sizeof(viewProjectionData);
-	fillBufferInfo.data = viewProjectionData;
-	VkA::FillBuffer(fillBufferInfo);
-
-	copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
-	copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
-	VkA::CopyBuffer(copyBufferInfo);
-}
-
-// model matrices
-{
-	ZeroMemory(modelMatricesData, sizeof(modelMatricesData));
-	modelMatricesData[0] = glm::mat4(1);
-
-	createBufferInfo.size = sizeof(modelMatricesData);
-	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	VkA::CreateBuffer(modelMatricesBuffer, createBufferInfo);
-
-	fillBufferInfo.offset = 0;
-	fillBufferInfo.size = sizeof(modelMatricesData);
-	fillBufferInfo.data = modelMatricesData;
-	VkA::FillBuffer(fillBufferInfo);
-
-	copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
-	copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
-	VkA::CopyBuffer(copyBufferInfo);
-}
-
-// vertex buffer
-{
-	float vertices[] = {
-		//	Position					TexCoord			Normal
-			+0.0f, -0.5f, -1.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
-			+0.5f, +0.5f, -1.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
-			-0.5f, +0.5f, -1.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
-
-	createBufferInfo.size = sizeof(vertices);
-	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	VkA::CreateBuffer(vertexBuffer, createBufferInfo);
-
-	fillBufferInfo.offset = 0;
-	fillBufferInfo.size = sizeof(vertices);
-	fillBufferInfo.data = vertices;
-	VkA::FillBuffer(fillBufferInfo);
-
-	copyBufferInfo.copyRegions[0].size = vertexBuffer.size;
-	copyBufferInfo.dstBuffer = vertexBuffer.handle;
-	VkA::CopyBuffer(copyBufferInfo);
-}
-
-// index buffer
-{
-	uint16_t indices[] = { 0, 1, 2 };
-
-	createBufferInfo.size = sizeof(indices);
-	createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	VkA::CreateBuffer(indexBuffer, createBufferInfo);
-
-	fillBufferInfo.offset = 0;
-	fillBufferInfo.size = sizeof(indices);
-	fillBufferInfo.data = indices;
-	VkA::FillBuffer(fillBufferInfo);
-
-	copyBufferInfo.copyRegions[0].size = indexBuffer.size;
-	copyBufferInfo.dstBuffer = indexBuffer.handle;
-	VkA::CopyBuffer(copyBufferInfo);
-}
+		// model matrices
+		{
+			ZeroMemory(modelMatricesData, sizeof(modelMatricesData));
+			modelMatricesData[0] = Math3D::GetIdentity();
+		
+			createBufferInfo.size = sizeof(modelMatricesData);
+			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			VkA::CreateBuffer(modelMatricesBuffer, createBufferInfo);
+		
+			fillBufferInfo.offset = 0;
+			fillBufferInfo.size = sizeof(modelMatricesData);
+			fillBufferInfo.data = modelMatricesData;
+			VkA::FillBuffer(fillBufferInfo);
+		
+			copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
+			copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
+			VkA::CopyBuffer(copyBufferInfo);
+		}
+		
+		// vertex buffer
+		{
+			float vertices[] = {
+				//	Position					TexCoord			Normal
+					+0.0f, -0.5f, -1.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
+					+0.5f, +0.5f, -1.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
+					-0.5f, +0.5f, -1.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
+		
+			createBufferInfo.size = sizeof(vertices);
+			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			VkA::CreateBuffer(vertexBuffer, createBufferInfo);
+		
+			fillBufferInfo.offset = 0;
+			fillBufferInfo.size = sizeof(vertices);
+			fillBufferInfo.data = vertices;
+			VkA::FillBuffer(fillBufferInfo);
+		
+			copyBufferInfo.copyRegions[0].size = vertexBuffer.size;
+			copyBufferInfo.dstBuffer = vertexBuffer.handle;
+			VkA::CopyBuffer(copyBufferInfo);
+		}
+		
+		// index buffer
+		{
+			uint16_t indices[] = { 0, 1, 2 };
+		
+			createBufferInfo.size = sizeof(indices);
+			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			VkA::CreateBuffer(indexBuffer, createBufferInfo);
+		
+			fillBufferInfo.offset = 0;
+			fillBufferInfo.size = sizeof(indices);
+			fillBufferInfo.data = indices;
+			VkA::FillBuffer(fillBufferInfo);
+		
+			copyBufferInfo.copyRegions[0].size = indexBuffer.size;
+			copyBufferInfo.dstBuffer = indexBuffer.handle;
+			VkA::CopyBuffer(copyBufferInfo);
+		}
 	}
 
 	// Texture

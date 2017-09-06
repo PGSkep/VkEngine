@@ -38,9 +38,11 @@ class GpuController
 
 	void* stagingBufferData;
 	VkS::Buffer stagingBuffer;
-	glm::mat4 viewProjectionData[2];
+	//glm::mat4 viewProjectionData[2];
+	Math3D::Mat4 viewProjectionData[2];
 	VkS::Buffer viewProjectionBuffer;
-	glm::mat4 modelMatricesData[1024];
+	//glm::mat4 modelMatricesData[1024];
+	Math3D::Mat4 modelMatricesData[1024];
 	VkS::Buffer modelMatricesBuffer;
 	VkS::Buffer vertexBuffer;
 	VkS::Buffer indexBuffer;

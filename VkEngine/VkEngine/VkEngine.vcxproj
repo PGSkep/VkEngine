@@ -121,6 +121,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Math3D.h" />
     <ClInclude Include="Gpu.h" />
     <ClInclude Include="GpuController.h" />
     <ClInclude Include="Vk.h" />
@@ -135,6 +136,7 @@
   <ItemGroup>
     <ClCompile Include="Gpu.cpp" />
     <ClCompile Include="GpuController.cpp" />
+    <ClCompile Include="Math3D.cpp" />
     <ClCompile Include="Vk.cpp" />
     <ClCompile Include="_main.cpp" />
   </ItemGroup>

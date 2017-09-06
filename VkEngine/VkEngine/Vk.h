@@ -6,10 +6,11 @@
 #define VK_RESERVED_FOR_FUTURE_USE 0
 #define VK_FLAGS_NONE 0
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include "Math3D.h"
+//#define GLM_FORCE_RADIANS
+//#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+//#include <glm/glm.hpp>
+//#include <glm/gtc/matrix_transform.hpp>
 
 #if _DEBUG
 #include <iostream>
