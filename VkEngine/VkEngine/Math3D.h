@@ -9,12 +9,20 @@ namespace Math3D
 		Vec2();
 		Vec2(float _x, float _y);
 	};
+	
 	struct Vec3
 	{
 		float x, y, z;
 		Vec3();
 		Vec3(float _x, float _y, float _z);
+
+		Vec3& operator-(const Vec3 _source);
 	};
+
+	Vec3 Normalize(const Vec3 _vector);
+	Vec3 Cross(const Vec3 _vectorA, const Vec3 _vectorB);
+	float Dot(const Vec3 _vectorA, const Vec3 _vectorB);
+
 	struct Vec4
 	{
 		float x, y, z, w;
@@ -44,8 +52,6 @@ namespace Math3D
 		void operator/=(const float _source);
 		void operator/=(const Vec4& _source);
 
-		Mat4& operator*(const float _source);
-		Mat4& operator*(const Vec4& _source);
 		Mat4 operator*(const Mat4& _source);
 
 		Mat4& operator/(const float _source);
@@ -64,6 +70,8 @@ namespace Math3D
 	Mat4 GetScaleMatrix(Vec3 _scale);
 
 	Mat4 GetPerspectiveMatrix(float _fov, float _aspect, float _near, float _far);
+
+	Mat4 GetLookAt(Vec3 _eye, Vec3 _center, Vec3 _up);
 }
 
 #endif

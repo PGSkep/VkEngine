@@ -28,6 +28,32 @@ Math3D::Vec3::Vec3(float _x, float _y, float _z)
 	z = _z;
 }
 
+Math3D::Vec3& Math3D::Vec3::operator-(const Vec3 _source)
+{
+	x -= _source.x;
+	y -= _source.y;
+	z -= _source.z;
+
+	return *this;
+}
+
+Math3D::Vec3 Math3D::Normalize(const Vec3 _vector)
+{
+	float length = sqrtf((_vector.x * _vector.x) + (_vector.y * _vector.y) + (_vector.z * _vector.z));
+	return Vec3(_vector.x / length, _vector.y / length, _vector.z / length);
+}
+Math3D::Vec3 Math3D::Cross(const Vec3 _vectorA, const Vec3 _vectorB)
+{
+	return Vec3(
+		_vectorA.y * _vectorB.z - _vectorB.y * _vectorA.z,
+		_vectorA.z * _vectorB.x - _vectorB.z * _vectorA.x,
+		_vectorA.x * _vectorB.y - _vectorB.x * _vectorA.y);
+}
+float Math3D::Dot(const Vec3 _vectorA, const Vec3 _vectorB)
+{
+	return _vectorA.x * _vectorB.x + _vectorA.y * _vectorB.y + _vectorA.z * _vectorB.z;
+}
+
 /// Vec4
 Math3D::Vec4::Vec4()
 {
@@ -255,54 +281,6 @@ void Math3D::Mat4::operator/=(const Vec4& _source)
 	ww *= val[3];
 }
 
-Math3D::Mat4& Math3D::Mat4::operator*(float _source)
-{
-	xx *= _source;
-	xy *= _source;
-	xz *= _source;
-	xw *= _source;
-
-	yx *= _source;
-	yy *= _source;
-	yz *= _source;
-	yw *= _source;
-
-	zx *= _source;
-	zy *= _source;
-	zz *= _source;
-	zw *= _source;
-
-	wx *= _source;
-	wy *= _source;
-	wz *= _source;
-	ww *= _source;
-
-	return *this;
-}
-Math3D::Mat4& Math3D::Mat4::operator*(const Vec4& _source)
-{
-	xx *= _source.x;
-	xy *= _source.y;
-	xz *= _source.z;
-	xw *= _source.w;
-
-	yx *= _source.x;
-	yy *= _source.y;
-	yz *= _source.z;
-	yw *= _source.w;
-
-	zx *= _source.x;
-	zy *= _source.y;
-	zz *= _source.z;
-	zw *= _source.w;
-
-	wx *= _source.x;
-	wy *= _source.y;
-	wz *= _source.z;
-	ww *= _source.w;
-
-	return *this;
-}
 Math3D::Mat4 Math3D::Mat4::operator*(const Mat4& _source)
 {
 	Mat4 result;
@@ -476,6 +454,31 @@ Math3D::Mat4 Math3D::GetPerspectiveMatrix(const float _fov, const float _aspect,
 
 	mat.zz = _far / (_near - _far);
 	mat.wz = -(_far * _near) / (_far - _near);
+
+	return mat;
+}
+
+Math3D::Mat4 Math3D::GetLookAt(Vec3 _eye, Vec3 _center, Vec3 _up)
+{
+	Math3D::Mat4 mat;
+
+	const Vec3 front(Math3D::Normalize(_center - _eye));
+	const Vec3 side(Math3D::Normalize(Cross(front, _up)));
+	const Vec3 up(Cross(side, front));
+
+	mat.xx = side.x;
+	mat.yx = side.y;
+	mat.zx = side.z;
+	mat.xy = up.x;
+	mat.yy = up.y;
+	mat.zy = up.z;
+	mat.xz = -front.x;
+	mat.yz = -front.y;
+	mat.zz = -front.z;
+	mat.wx = -Dot(side, _eye);
+	mat.wy = -Dot(up, _eye);
+	mat.wz = Dot(front, _eye);
+	mat.ww = 1.0f;
 
 	return mat;
 }

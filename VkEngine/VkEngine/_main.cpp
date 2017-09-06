@@ -23,6 +23,12 @@ int main()
 
 	Math3D::Mat4 matF = Math3D::GetIdentity();
 
+	Math3D::Mat4 matG = Math3D::GetLookAt({ 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 }, { 0.0, 1.0, 0.0 });
+
+	float b = Math3D::Dot({ 1.0, 2.0, 3.0 }, { 4.0, 5.0, 6.0 });
+	Math3D::Vec3 vB = Math3D::Cross({ 1.0, 2.0, 3.0 }, { 4.0, 5.0, 6.0 });
+	Math3D::Vec3 vD = Math3D::Normalize({ 4.0, 5.0, 6.0 });
+
 	//return 0;
 
 	Gpu gpu;
