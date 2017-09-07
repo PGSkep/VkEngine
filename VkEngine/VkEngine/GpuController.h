@@ -3,8 +3,17 @@
 
 #include "Vk.h"
 
+#include "Scene.h"
+#include "Timer.h"
+
 class GpuController
 {
+	Timer timer;
+	double lastTime;
+	double deltaTime;
+
+	Scene scene;
+
 	VkS::Device* device;
 	VkS::Window* window;
 	VkS::Window* wireframeWindow;

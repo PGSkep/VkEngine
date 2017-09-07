@@ -10,6 +10,12 @@
 
 void GpuController::Init(VkS::Device* _device)
 {
+	timer.SetResolution(Timer::RESOLUTION::RESOLUTION_NANOSECONDS);
+	timer.Play();
+	lastTime = timer.GetTime();
+
+	scene.Init();
+
 	device = _device;
 
 	window = device->windows[0];
@@ -514,12 +520,8 @@ void GpuController::Init(VkS::Device* _device)
 		
 		// view projection
 		{
-			//viewProjectionData[0] = glm::mat4(1);
-			//viewProjectionData[1] = glm::perspective(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
-			viewProjectionData[0] = Math3D::GetIdentity();
+			viewProjectionData[0] = scene.view;
 			viewProjectionData[1] = Math3D::GetPerspectiveMatrix(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
-		
-			//viewProjectionData[0] = viewProjectionData[0] * viewProjectionData[1];
 		
 			createBufferInfo.size = sizeof(viewProjectionData);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -539,7 +541,7 @@ void GpuController::Init(VkS::Device* _device)
 		// model matrices
 		{
 			ZeroMemory(modelMatricesData, sizeof(modelMatricesData));
-			modelMatricesData[0] = Math3D::GetIdentity();
+			modelMatricesData[0] = Math3D::GetMat4Identity();
 		
 			createBufferInfo.size = sizeof(modelMatricesData);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -842,8 +844,57 @@ void GpuController::Run()
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
+	VkU::CopyBufferInfo copyBufferInfo;
+	copyBufferInfo.vkDevice = device->handle;
+	copyBufferInfo.setupFence = setupFence;
+	copyBufferInfo.setupQueue = graphicsQueue;
+	copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+	copyBufferInfo.srcBuffer = stagingBuffer.handle;
+	copyBufferInfo.copyRegions.resize(1);
+	copyBufferInfo.copyRegions[0].srcOffset = 0;
+	copyBufferInfo.copyRegions[0].dstOffset = 0;
+
+	// Draw
 	Draw(window, 0);
 	Draw(wireframeWindow, 1);
+
+	// Update uniforms
+	{
+		/// TODO: Get below to work properly
+		//VkU::FillBufferInfo fillBufferInfo;
+		//fillBufferInfo.vkDevice = device->handle;
+		//fillBufferInfo.dstBuffer = stagingBuffer;
+		//
+		//VkU::CopyBufferInfo copyBufferInfo;
+		//copyBufferInfo.vkDevice = device->handle;
+		//copyBufferInfo.setupFence = setupFence;
+		//copyBufferInfo.setupQueue = graphicsQueue;
+		//copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+		//copyBufferInfo.srcBuffer = stagingBuffer.handle;
+		//copyBufferInfo.copyRegions.resize(1);
+		//copyBufferInfo.copyRegions[0].srcOffset = 0;
+		//copyBufferInfo.copyRegions[0].dstOffset = 0;
+		//
+		//// view projection
+		//fillBufferInfo.offset = 0;
+		//fillBufferInfo.size = sizeof(viewProjectionData);
+		//fillBufferInfo.data = viewProjectionData;
+		//VkA::FillBuffer(fillBufferInfo);
+		//
+		//copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
+		//copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
+		//VkA::CopyBuffer(copyBufferInfo);
+		//
+		//// model matrices
+		//fillBufferInfo.offset = 0;
+		//fillBufferInfo.size = sizeof(modelMatricesData);
+		//fillBufferInfo.data = modelMatricesData;
+		//VkA::FillBuffer(fillBufferInfo);
+		//
+		//copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
+		//copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
+		//VkA::CopyBuffer(copyBufferInfo);
+	}
 
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	// Render Fill

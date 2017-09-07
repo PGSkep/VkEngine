@@ -37,9 +37,14 @@ Math3D::Vec3& Math3D::Vec3::operator-(const Vec3 _source)
 	return *this;
 }
 
+// Other
+float Math3D::Lenght(const Vec3 _vector)
+{
+	return sqrtf((_vector.x * _vector.x) + (_vector.y * _vector.y) + (_vector.z * _vector.z));
+}
 Math3D::Vec3 Math3D::Normalize(const Vec3 _vector)
 {
-	float length = sqrtf((_vector.x * _vector.x) + (_vector.y * _vector.y) + (_vector.z * _vector.z));
+	float length = Lenght(_vector);
 	return Vec3(_vector.x / length, _vector.y / length, _vector.z / length);
 }
 Math3D::Vec3 Math3D::Cross(const Vec3 _vectorA, const Vec3 _vectorB)
@@ -54,20 +59,33 @@ float Math3D::Dot(const Vec3 _vectorA, const Vec3 _vectorB)
 	return _vectorA.x * _vectorB.x + _vectorA.y * _vectorB.y + _vectorA.z * _vectorB.z;
 }
 
-/// Vec4
-Math3D::Vec4::Vec4()
+/// Quat
+Math3D::Quat::Quat()
 {
 	x = 0.0f;
 	y = 0.0f;
 	z = 0.0f;
-	w = 0.0f;
+	w = 1.0f;
 }
-Math3D::Vec4::Vec4(float _x, float _y, float _z, float _w)
+Math3D::Quat::Quat(float _x, float _y, float _z, float _w)
 {
 	x = _x;
 	y = _y;
 	z = _z;
 	w = _w;
+}
+
+// Get
+Math3D::Quat Math3D::GetQuatIdentity()
+{
+	Math3D::Quat quat;
+
+	quat.x = 0.0f;
+	quat.y = 0.0f;
+	quat.z = 0.0f;
+	quat.w = 1.0f;
+
+	return quat;
 }
 
 /// Mat4
@@ -116,6 +134,7 @@ Math3D::Mat4::Mat4(float _xx, float _xy, float _xz, float _xw, float _yx, float 
 	ww = _ww;
 }
 
+// Operator
 void Math3D::Mat4::operator+=(const Mat4& _source)
 {
 	xx += _source.xx;
@@ -160,7 +179,6 @@ void Math3D::Mat4::operator-=(const Mat4& _source)
 	wz -= _source.wz;
 	ww -= _source.ww;
 }
-
 void Math3D::Mat4::operator*=(const float _source)
 {
 	xx *= _source;
@@ -182,28 +200,6 @@ void Math3D::Mat4::operator*=(const float _source)
 	wy *= _source;
 	wz *= _source;
 	ww *= _source;
-}
-void Math3D::Mat4::operator*=(const Vec4& _source)
-{
-	xx *= _source.x;
-	xy *= _source.y;
-	xz *= _source.z;
-	xw *= _source.w;
-
-	yx *= _source.x;
-	yy *= _source.y;
-	yz *= _source.z;
-	yw *= _source.w;
-
-	zx *= _source.x;
-	zy *= _source.y;
-	zz *= _source.z;
-	zw *= _source.w;
-
-	wx *= _source.x;
-	wy *= _source.y;
-	wz *= _source.z;
-	ww *= _source.w;
 }
 void Math3D::Mat4::operator*=(const Mat4& _source)
 {
@@ -227,60 +223,6 @@ void Math3D::Mat4::operator*=(const Mat4& _source)
 	wz = zx*_source.xw + zy*_source.yw + zz*_source.zw + zw*_source.ww;
 	ww = wx*_source.xw + wy*_source.yw + wz*_source.zw + ww*_source.ww;
 }
-
-void Math3D::Mat4::operator/=(const float _source)
-{
-	float val = 1.0f/_source;
-
-	xx *= val;
-	xy *= val;
-	xz *= val;
-	xw *= val;
-
-	yx *= val;
-	yy *= val;
-	yz *= val;
-	yw *= val;
-
-	zx *= val;
-	zy *= val;
-	zz *= val;
-	zw *= val;
-
-	wx *= val;
-	wy *= val;
-	wz *= val;
-	ww *= val;
-}
-void Math3D::Mat4::operator/=(const Vec4& _source)
-{
-	float val[4];
-	val[0] = 1.0f / _source.x;
-	val[1] = 1.0f / _source.y;
-	val[2] = 1.0f / _source.z;
-	val[3] = 1.0f / _source.w;
-
-	xx *= val[0];
-	xy *= val[1];
-	xz *= val[2];
-	xw *= val[3];
-
-	yx *= val[0];
-	yy *= val[1];
-	yz *= val[2];
-	yw *= val[3];
-
-	zx *= val[0];
-	zy *= val[1];
-	zz *= val[2];
-	zw *= val[3];
-
-	wx *= val[0];
-	wy *= val[1];
-	wz *= val[2];
-	ww *= val[3];
-}
-
 Math3D::Mat4 Math3D::Mat4::operator*(const Mat4& _source)
 {
 	Mat4 result;
@@ -308,64 +250,8 @@ Math3D::Mat4 Math3D::Mat4::operator*(const Mat4& _source)
 	return result;
 }
 
-Math3D::Mat4& Math3D::Mat4::operator/(float _source)
-{
-	float val = 1.0f / _source;
-
-	xx *= val;
-	xy *= val;
-	xz *= val;
-	xw *= val;
-
-	yx *= val;
-	yy *= val;
-	yz *= val;
-	yw *= val;
-
-	zx *= val;
-	zy *= val;
-	zz *= val;
-	zw *= val;
-
-	wx *= val;
-	wy *= val;
-	wz *= val;
-	ww *= val;
-
-	return *this;
-}
-Math3D::Mat4& Math3D::Mat4::operator/(const Vec4& _source)
-{
-	float val[4];
-	val[0] = 1.0f / _source.x;
-	val[1] = 1.0f / _source.y;
-	val[2] = 1.0f / _source.z;
-	val[3] = 1.0f / _source.w;
-
-	xx *= val[0];
-	xy *= val[1];
-	xz *= val[2];
-	xw *= val[3];
-
-	yx *= val[0];
-	yy *= val[1];
-	yz *= val[2];
-	yw *= val[3];
-
-	zx *= val[0];
-	zy *= val[1];
-	zz *= val[2];
-	zw *= val[3];
-
-	wx *= val[0];
-	wy *= val[1];
-	wz *= val[2];
-	ww *= val[3];
-
-	return *this;
-}
-
-Math3D::Mat4 Math3D::GetIdentity()
+// Get
+Math3D::Mat4 Math3D::GetMat4Identity()
 {
 	Math3D::Mat4 mat;
 
@@ -376,7 +262,6 @@ Math3D::Mat4 Math3D::GetIdentity()
 
 	return mat;
 }
-
 Math3D::Mat4 Math3D::GetTranslateMatrix(Vec3 _translate)
 {
 	Math3D::Mat4 mat;
@@ -388,7 +273,6 @@ Math3D::Mat4 Math3D::GetTranslateMatrix(Vec3 _translate)
 
 	return mat;
 }
-
 Math3D::Mat4 Math3D::GetRotateXMatrix(float _x)
 {
 	Math3D::Mat4 mat;
@@ -426,7 +310,6 @@ Math3D::Mat4 Math3D::GetRotateMatrix(Vec3 _rotate)
 {
 	return Mat4();
 }
-
 Math3D::Mat4 Math3D::GetScaleMatrix(Vec3 _scale)
 {
 	Math3D::Mat4 mat;
@@ -438,7 +321,6 @@ Math3D::Mat4 Math3D::GetScaleMatrix(Vec3 _scale)
 
 	return mat;
 }
-
 Math3D::Mat4 Math3D::GetPerspectiveMatrix(const float _fov, const float _aspect, const float _near, const float _far)
 {
 	Math3D::Mat4 mat;
@@ -457,12 +339,11 @@ Math3D::Mat4 Math3D::GetPerspectiveMatrix(const float _fov, const float _aspect,
 
 	return mat;
 }
-
-Math3D::Mat4 Math3D::GetLookAt(Vec3 _eye, Vec3 _center, Vec3 _up)
+Math3D::Mat4 Math3D::GetLookAt(Vec3 _origin, Vec3 _target, Vec3 _up)
 {
 	Math3D::Mat4 mat;
 
-	const Vec3 front(Math3D::Normalize(_center - _eye));
+	const Vec3 front(Math3D::Normalize(_target - _origin));
 	const Vec3 side(Math3D::Normalize(Cross(front, _up)));
 	const Vec3 up(Cross(side, front));
 
@@ -475,10 +356,36 @@ Math3D::Mat4 Math3D::GetLookAt(Vec3 _eye, Vec3 _center, Vec3 _up)
 	mat.xz = -front.x;
 	mat.yz = -front.y;
 	mat.zz = -front.z;
-	mat.wx = -Dot(side, _eye);
-	mat.wy = -Dot(up, _eye);
-	mat.wz = Dot(front, _eye);
+	mat.wx = -Dot(side, _origin);
+	mat.wy = -Dot(up, _origin);
+	mat.wz = Dot(front, _origin);
 	mat.ww = 1.0f;
 
 	return mat;
+}
+
+// Extract
+Math3D::Vec3 Math3D::ExtractPosition(Mat4 _matrix)
+{
+	return Vec3(_matrix.xw, _matrix.yw, _matrix.zw);
+}
+Math3D::Vec3 Math3D::ExtractFront(Mat4 _matrix)
+{
+	return Vec3(_matrix.xz, _matrix.yz, _matrix.zz);
+}
+Math3D::Vec3 Math3D::ExtractRight(Mat4 _matrix)
+{
+	return Vec3(_matrix.xx, _matrix.yx, _matrix.zx);
+}
+Math3D::Vec3 Math3D::ExtractUp(Mat4 _matrix)
+{
+	return Vec3(_matrix.xy, _matrix.yy, _matrix.zy);
+}
+Math3D::Vec3 Math3D::ExtractScale(Mat4 _matrix)
+{
+	float lenghtX = Lenght({ _matrix.xx, _matrix.yx, _matrix.zx });
+	float lenghtY = Lenght({ _matrix.xy, _matrix.yy, _matrix.zy });
+	float lenghtZ = Lenght({ _matrix.xz, _matrix.yz, _matrix.zz });
+
+	return Vec3(lenghtX, lenghtY, lenghtZ);
 }
