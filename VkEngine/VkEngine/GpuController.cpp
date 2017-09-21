@@ -468,7 +468,7 @@ void GpuController::Init(VkS::Device* _device)
 
 		// staging
 		{
-			createBufferInfo.size = sizeof(uint8_t) * (2 + 1024) * sizeof(Math3D::Mat4); // 2 mat4(view projection) 1024 mat4(model matrices)
+			createBufferInfo.size = sizeof(uint8_t) * (2 + 1024) * sizeof(Math3D2::Mat4); // 2 mat4(view projection) 1024 mat4(model matrices)
 			stagingBufferData = new uint8_t[createBufferInfo.size];
 
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -494,7 +494,6 @@ void GpuController::Init(VkS::Device* _device)
 		{
 			viewProjectionData[0] = scene.view;
 
-			Math3D::Mat4 a = Math3D::GetPerspectiveMatrix(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
 			viewProjectionData[1] = Math3D2::Mat4::GetPerspectiveProjection(45.0f, (float)window->extent.width, (float)window->extent.height, 0.1f, 1000.0f);
 
 			createBufferInfo.size = sizeof(viewProjectionData);

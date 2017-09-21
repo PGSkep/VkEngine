@@ -2,7 +2,7 @@
 
 #include <math.h>
 
-//*
+/*
 /// Vec2
 Math3D::Vec2::Vec2()
 {
