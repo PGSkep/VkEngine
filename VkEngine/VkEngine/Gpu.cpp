@@ -29,7 +29,7 @@ void Gpu::Init()
 
 	// Window
 	{
-		windows.resize(2);
+		windows.resize(1);
 		VkU::CreateWindowInfo createWindowInfo;
 		createWindowInfo.x = 0;
 		createWindowInfo.y = ~0U;
@@ -41,12 +41,6 @@ void Gpu::Init()
 		createWindowInfo.instance = instance.handle;
 		createWindowInfo.hasDepthBuffer = true;
 		VkA::CreateOSWindow(windows[0], createWindowInfo);
-
-		createWindowInfo.x = createWindowInfo.width;
-		createWindowInfo.y = ~0U;
-		createWindowInfo.title = "title2";
-		createWindowInfo.name = "name2";
-		VkA::CreateOSWindow(windows[1], createWindowInfo);
 	}
 
 	// Device
@@ -56,11 +50,10 @@ void Gpu::Init()
 		features.multiViewport = VK_TRUE;
 		features.tessellationShader = VK_TRUE;
 
-
 		VkU::CreateDeviceInfo createDeviceInfo;
 		createDeviceInfo.instance = &instance;
 		createDeviceInfo.requestedFeatures = features;
-		createDeviceInfo.windows = { &windows[0], &windows[1] };
+		createDeviceInfo.windows = { &windows[0] };
 		createDeviceInfo.windowsProperties = {
 			VkU::CreateDeviceInfo::WindowProperties::GetWindowProperties({ VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR, },{ VK_PRESENT_MODE_MAILBOX_KHR, }),
 			VkU::CreateDeviceInfo::WindowProperties::GetWindowProperties({ VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR, },{ VK_PRESENT_MODE_MAILBOX_KHR, }),

@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+//*
 /// Vec2
 Math3D::Vec2::Vec2()
 {
@@ -36,6 +37,22 @@ Math3D::Vec3& Math3D::Vec3::operator-(const Vec3 _source)
 
 	return *this;
 }
+Math3D::Vec3& Math3D::Vec3::operator+(const Vec3 _source)
+{
+	x += _source.x;
+	y += _source.y;
+	z += _source.z;
+
+	return *this;
+}
+Math3D::Vec3& Math3D::Vec3::operator*(const float _source)
+{
+	x *= _source;
+	y *= _source;
+	z *= _source;
+
+	return *this;
+}
 
 // Other
 float Math3D::Lenght(const Vec3 _vector)
@@ -57,6 +74,14 @@ Math3D::Vec3 Math3D::Cross(const Vec3 _vectorA, const Vec3 _vectorB)
 float Math3D::Dot(const Vec3 _vectorA, const Vec3 _vectorB)
 {
 	return _vectorA.x * _vectorB.x + _vectorA.y * _vectorB.y + _vectorA.z * _vectorB.z;
+}
+float Math3D::Distance(const Vec3 _p1, const Vec3 _p2)
+{
+	return sqrtf(
+		((_p2.x - _p1.x) * (_p2.x - _p1.x)) +
+		((_p2.y - _p1.y) * (_p2.y - _p1.y)) +
+		((_p2.z - _p1.z) * (_p2.z - _p1.z))
+	);
 }
 
 /// Quat
@@ -203,51 +228,57 @@ void Math3D::Mat4::operator*=(const float _source)
 }
 void Math3D::Mat4::operator*=(const Mat4& _source)
 {
-	xx = xx*_source.xx + xy*_source.yx + xz*_source.zx + xw*_source.wx;
-	xy = yx*_source.xx + yy*_source.yx + yz*_source.zx + yw*_source.wx;
-	xz = zx*_source.xx + zy*_source.yx + zz*_source.zx + zw*_source.wx;
-	xw = wx*_source.xx + wy*_source.yx + wz*_source.zx + ww*_source.wx;
+	Mat4 result;
 
-	yx = xx*_source.xy + xy*_source.yy + xz*_source.zy + xw*_source.wy;
-	yy = yx*_source.xy + yy*_source.yy + yz*_source.zy + yw*_source.wy;
-	yz = zx*_source.xy + zy*_source.yy + zz*_source.zy + zw*_source.wy;
-	yw = wx*_source.xy + wy*_source.yy + wz*_source.zy + ww*_source.wy;
+	result.xx = xx*_source.xx + xy*_source.yx + xz*_source.zx + xw*_source.wx;
+	result.yx = yx*_source.xx + yy*_source.yx + yz*_source.zx + yw*_source.wx;
+	result.zx = zx*_source.xx + zy*_source.yx + zz*_source.zx + zw*_source.wx;
+	result.wx = wx*_source.xx + wy*_source.yx + wz*_source.zx + ww*_source.wx;
 
-	zx = xx*_source.xz + xy*_source.yz + xz*_source.zz + xw*_source.wz;
-	zy = yx*_source.xz + yy*_source.yz + yz*_source.zz + yw*_source.wz;
-	zz = zx*_source.xz + zy*_source.yz + zz*_source.zz + zw*_source.wz;
-	zw = wx*_source.xz + wy*_source.yz + wz*_source.zz + ww*_source.wz;
+	result.xy = xx*_source.xy + xy*_source.yy + xz*_source.zy + xw*_source.wy;
+	result.yy = yx*_source.xy + yy*_source.yy + yz*_source.zy + yw*_source.wy;
+	result.zy = zx*_source.xy + zy*_source.yy + zz*_source.zy + zw*_source.wy;
+	result.wy = wx*_source.xy + wy*_source.yy + wz*_source.zy + ww*_source.wy;
 
-	wx = xx*_source.xw + xy*_source.yw + xz*_source.zw + xw*_source.ww;
-	wy = yx*_source.xw + yy*_source.yw + yz*_source.zw + yw*_source.ww;
-	wz = zx*_source.xw + zy*_source.yw + zz*_source.zw + zw*_source.ww;
-	ww = wx*_source.xw + wy*_source.yw + wz*_source.zw + ww*_source.ww;
+	result.xz = xx*_source.xz + xy*_source.yz + xz*_source.zz + xw*_source.wz;
+	result.yz = yx*_source.xz + yy*_source.yz + yz*_source.zz + yw*_source.wz;
+	result.zz = zx*_source.xz + zy*_source.yz + zz*_source.zz + zw*_source.wz;
+	result.wz = wx*_source.xz + wy*_source.yz + wz*_source.zz + ww*_source.wz;
+
+	result.xw = xx*_source.xw + xy*_source.yw + xz*_source.zw + xw*_source.ww;
+	result.yw = yx*_source.xw + yy*_source.yw + yz*_source.zw + yw*_source.ww;
+	result.zw = zx*_source.xw + zy*_source.yw + zz*_source.zw + zw*_source.ww;
+	result.ww = wx*_source.xw + wy*_source.yw + wz*_source.zw + ww*_source.ww;
+
+	memcpy(&this->xx, &result.xx, sizeof(Mat4));
 }
 Math3D::Mat4 Math3D::Mat4::operator*(const Mat4& _source)
 {
 	Mat4 result;
 
 	result.xx = xx*_source.xx + xy*_source.yx + xz*_source.zx + xw*_source.wx;
-	result.xy = yx*_source.xx + yy*_source.yx + yz*_source.zx + yw*_source.wx;
-	result.xz = zx*_source.xx + zy*_source.yx + zz*_source.zx + zw*_source.wx;
-	result.xw = wx*_source.xx + wy*_source.yx + wz*_source.zx + ww*_source.wx;
+	result.yx = yx*_source.xx + yy*_source.yx + yz*_source.zx + yw*_source.wx;
+	result.zx = zx*_source.xx + zy*_source.yx + zz*_source.zx + zw*_source.wx;
+	result.wx = wx*_source.xx + wy*_source.yx + wz*_source.zx + ww*_source.wx;
 
-	result.yx = xx*_source.xy + xy*_source.yy + xz*_source.zy + xw*_source.wy;
+	result.xy = xx*_source.xy + xy*_source.yy + xz*_source.zy + xw*_source.wy;
 	result.yy = yx*_source.xy + yy*_source.yy + yz*_source.zy + yw*_source.wy;
-	result.yz = zx*_source.xy + zy*_source.yy + zz*_source.zy + zw*_source.wy;
-	result.yw = wx*_source.xy + wy*_source.yy + wz*_source.zy + ww*_source.wy;
+	result.zy = zx*_source.xy + zy*_source.yy + zz*_source.zy + zw*_source.wy;
+	result.wy = wx*_source.xy + wy*_source.yy + wz*_source.zy + ww*_source.wy;
 
-	result.zx = xx*_source.xz + xy*_source.yz + xz*_source.zz + xw*_source.wz;
-	result.zy = yx*_source.xz + yy*_source.yz + yz*_source.zz + yw*_source.wz;
+	result.xz = xx*_source.xz + xy*_source.yz + xz*_source.zz + xw*_source.wz;
+	result.yz = yx*_source.xz + yy*_source.yz + yz*_source.zz + yw*_source.wz;
 	result.zz = zx*_source.xz + zy*_source.yz + zz*_source.zz + zw*_source.wz;
-	result.zw = wx*_source.xz + wy*_source.yz + wz*_source.zz + ww*_source.wz;
+	result.wz = wx*_source.xz + wy*_source.yz + wz*_source.zz + ww*_source.wz;
 
-	result.wx = xx*_source.xw + xy*_source.yw + xz*_source.zw + xw*_source.ww;
-	result.wy = yx*_source.xw + yy*_source.yw + yz*_source.zw + yw*_source.ww;
-	result.wz = zx*_source.xw + zy*_source.yw + zz*_source.zw + zw*_source.ww;
+	result.xw = xx*_source.xw + xy*_source.yw + xz*_source.zw + xw*_source.ww;
+	result.yw = yx*_source.xw + yy*_source.yw + yz*_source.zw + yw*_source.ww;
+	result.zw = zx*_source.xw + zy*_source.yw + zz*_source.zw + zw*_source.ww;
 	result.ww = wx*_source.xw + wy*_source.yw + wz*_source.zw + ww*_source.ww;
 
-	return result;
+	memcpy(&this->xx, &result.xx, sizeof(Mat4));
+
+	return *this;
 }
 
 // Get
@@ -266,10 +297,10 @@ Math3D::Mat4 Math3D::GetTranslateMatrix(Vec3 _translate)
 {
 	Math3D::Mat4 mat;
 
-	mat.xx = 1.0f; mat.xy = 0.0f; mat.xz = 0.0f; mat.xw = _translate.x;
-	mat.yx = 0.0f; mat.yy = 1.0f; mat.yz = 0.0f; mat.yw = _translate.y;
-	mat.zx = 0.0f; mat.zy = 0.0f; mat.zz = 1.0f; mat.zw = _translate.z;
-	mat.wx = 0.0f; mat.wy = 0.0f; mat.wz = 0.0f; mat.ww = 1.0f;
+	mat.xx = 1.0f; mat.xy = 0.0f; mat.xz = 0.0f; mat.xw = 0.0f;
+	mat.yx = 0.0f; mat.yy = 1.0f; mat.yz = 0.0f; mat.yw = 0.0f;
+	mat.zx = 0.0f; mat.zy = 0.0f; mat.zz = 1.0f; mat.zw = 0.0f;
+	mat.wx = _translate.x; mat.wy = _translate.y; mat.wz = _translate.z; mat.ww = 1.0f;
 
 	return mat;
 }
@@ -331,7 +362,7 @@ Math3D::Mat4 Math3D::GetPerspectiveMatrix(const float _fov, const float _aspect,
 
 	const float tanHalfFov = tanf(_fov / 2.0f);
 	mat.xx = 1.0f / (aspect * tanHalfFov);
-	mat.yy = 1.0f / tanHalfFov;
+	mat.yy = -1.0f / tanHalfFov;
 	mat.zw = -1.0f;
 
 	mat.zz = _far / (_near - _far);
@@ -367,7 +398,7 @@ Math3D::Mat4 Math3D::GetLookAt(Vec3 _origin, Vec3 _target, Vec3 _up)
 // Extract
 Math3D::Vec3 Math3D::ExtractPosition(Mat4 _matrix)
 {
-	return Vec3(_matrix.xw, _matrix.yw, _matrix.zw);
+	return Vec3(_matrix.wx, _matrix.wy, _matrix.wz);
 }
 Math3D::Vec3 Math3D::ExtractFront(Mat4 _matrix)
 {
@@ -389,3 +420,39 @@ Math3D::Vec3 Math3D::ExtractScale(Mat4 _matrix)
 
 	return Vec3(lenghtX, lenghtY, lenghtZ);
 }
+
+// Other
+Math3D::Vec3 Math3D::GetMidpoint(Math3D::Vec3 _p1, Math3D::Vec3 _p2)
+{
+	return { (_p2.x + _p1.x) * 0.5f, (_p2.y + _p1.y) * 0.5f, (_p2.z + _p1.z) * 0.5f };
+}
+bool CollisionCheckSphere(Math3D::Vec3 _p1, float _p1r, Math3D::Vec3 _p2, float _p2r)
+{
+	float distance = Math3D::Distance(_p1, _p2);
+	float sumRadius = _p1r + _p2r;
+
+	if (distance > sumRadius)
+		return false;
+	return true;
+}
+Math3D::Vec3 ClosestPointInfiniteLine(Math3D::Vec3 start, Math3D::Vec3 end, Math3D::Vec3 point)
+{
+	Math3D::Vec3 L = end - start;
+	Math3D::Vec3 N = Normalize(L);
+	Math3D::Vec3 V = point - start;
+	float D = Dot(N, V);
+	N = N * D;
+
+	return start + N;
+}
+bool CollisionInfiniteLineToSphere(Math3D::Vec3 _center, float _radius, Math3D::Vec3 _start, Math3D::Vec3 _end)
+{
+	Math3D::Vec3 closest = ClosestPointInfiniteLine(_start, _end, _center);
+
+	float distance = Distance(closest, _center);
+
+	if (distance > _radius)
+		return false;
+	return true;
+}
+//*/

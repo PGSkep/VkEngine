@@ -6,11 +6,11 @@
 struct Scene
 {
 public:
-	Math3D::Vec3 cameraPosition;
-	Math3D::Vec3 cameraTarget;
-	Math3D::Vec3 cameraUp;
+	Math3D2::Vec3 cameraPosition;
+	Math3D2::Vec3 cameraTarget;
+	Math3D2::Vec3 cameraUp;
 
-	Math3D::Mat4 view;
+	Math3D2::Mat4 view;
 
 	void Init();
 	void Update();

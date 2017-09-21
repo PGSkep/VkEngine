@@ -976,16 +976,16 @@ VkS::VKU_RESULT VkA::CreateWindowResources(VkS::Window& _window, VkU::CreateWind
 
 	// render commandBuffers
 	{
-		_window.commandBuffers.resize(_window.images.size());
+		_window.secondaryCommandBuffers.resize(_window.images.size());
 
 		VkCommandBufferAllocateInfo commandBufferAllocateInfo;
 		commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		commandBufferAllocateInfo.pNext = nullptr;
 		commandBufferAllocateInfo.commandPool = _createWindowResourcesInfo.graphicsCommandPool;
-		commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		commandBufferAllocateInfo.commandBufferCount = (uint32_t)_window.commandBuffers.size();
+		commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		commandBufferAllocateInfo.commandBufferCount = (uint32_t)_window.secondaryCommandBuffers.size();
 
-		VkU::vkApiResult = vkAllocateCommandBuffers(_createWindowResourcesInfo.vkDevice, &commandBufferAllocateInfo, _window.commandBuffers.data());
+		VkU::vkApiResult = vkAllocateCommandBuffers(_createWindowResourcesInfo.vkDevice, &commandBufferAllocateInfo, _window.secondaryCommandBuffers.data());
 		switch (VkU::vkApiResult)
 		{
 		case VK_SUCCESS:					break;
@@ -1132,6 +1132,30 @@ VkS::VKU_RESULT VkA::FillBuffer(VkU::FillBufferInfo _fillBufferInfo)
 
 	return vkuResult;
 }
+VkS::VKU_RESULT VkA::FillBuffer2(VkU::FillBufferInfo2 _fillBufferInfo2)
+{
+	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
+
+	void* data;
+	VkU::vkApiResult = vkMapMemory(_fillBufferInfo2.vkDevice, _fillBufferInfo2.dstBuffer.memory, _fillBufferInfo2.targetBufferMemoryOffset, _fillBufferInfo2.targetBufferMemorySize, 0, &data);
+	switch (VkU::vkApiResult)
+	{
+	case VK_SUCCESS:					break;
+	case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+	case VK_ERROR_MEMORY_MAP_FAILED:	return VkS::VKU_MEMORY_MAP_FAILED;
+	default:							vkuResult = VkS::VKU_UNKNOWN; break;
+	}
+
+	for (size_t iRegion = 0; iRegion != _fillBufferInfo2.memoryFillRegions.size(); ++iRegion)
+	{
+		memcpy((void*)(((char*)data) + _fillBufferInfo2.memoryFillRegions[iRegion].targetBufferMemoryOffset), _fillBufferInfo2.memoryFillRegions[iRegion].data, _fillBufferInfo2.memoryFillRegions[iRegion].size);
+	}
+
+	vkUnmapMemory(_fillBufferInfo2.vkDevice, _fillBufferInfo2.dstBuffer.memory);
+
+	return vkuResult;
+}
 VkS::VKU_RESULT VkA::CopyBuffer(VkU::CopyBufferInfo _copyBufferInfo)
 {
 	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
@@ -1184,13 +1208,13 @@ VkS::VKU_RESULT VkA::CopyBuffer(VkU::CopyBufferInfo _copyBufferInfo)
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
-	submitInfo.waitSemaphoreCount = 0;
-	submitInfo.pWaitSemaphores = nullptr;
-	submitInfo.pWaitDstStageMask = nullptr;
+	submitInfo.waitSemaphoreCount = (uint32_t)_copyBufferInfo.waitSemaphores.size();
+	submitInfo.pWaitSemaphores = _copyBufferInfo.waitSemaphores.data();
+	submitInfo.pWaitDstStageMask = _copyBufferInfo.waitStageFlags.data();
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &_copyBufferInfo.setupCommandBuffer;
-	submitInfo.signalSemaphoreCount = 0;
-	submitInfo.pSignalSemaphores = nullptr;
+	submitInfo.signalSemaphoreCount = (uint32_t)_copyBufferInfo.signalSemaphores.size();
+	submitInfo.pSignalSemaphores = _copyBufferInfo.signalSemaphores.data();
 	VkU::vkApiResult = vkQueueSubmit(_copyBufferInfo.setupQueue, 1, &submitInfo, _copyBufferInfo.setupFence);
 	switch (VkU::vkApiResult)
 	{
@@ -1202,6 +1226,13 @@ VkS::VKU_RESULT VkA::CopyBuffer(VkU::CopyBufferInfo _copyBufferInfo)
 	}
 
 	return vkuResult;
+}
+void VkA::CopyBuffers(VkU::CopyBuffersInfo _copyBuffersInfo)
+{
+	for(size_t iRegion = 0; iRegion != _copyBuffersInfo.bufferRegion.size(); ++iRegion)
+	{
+		vkCmdCopyBuffer(_copyBuffersInfo.commandBuffer, _copyBuffersInfo.srcBuffer, _copyBuffersInfo.bufferRegion[iRegion].dstBuffer, (uint32_t)_copyBuffersInfo.bufferRegion[iRegion].copyRegions.size(), _copyBuffersInfo.bufferRegion[iRegion].copyRegions.data());
+	}
 }
 
 VkS::VKU_RESULT VkA::LoadImageData(VkS::ImageData& _imageData, VkU::LoadImageDataInfo _loadImageDataInfo)
@@ -1444,7 +1475,7 @@ VkS::VKU_RESULT VkA::CopyTexture(VkU::CopyTextureInfo _copyTextureInfo)
 	sourceImageMemoryBarrier.subresourceRange.levelCount = 1;
 	sourceImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
 	sourceImageMemoryBarrier.subresourceRange.layerCount = 1;
-	vkCmdPipelineBarrier(_copyTextureInfo.setupCommandBuffer, VK_PIPELINE_STAGE_HOST_BIT , VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &sourceImageMemoryBarrier);
+	vkCmdPipelineBarrier(_copyTextureInfo.setupCommandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &sourceImageMemoryBarrier);
 
 	VkImageMemoryBarrier dstImageMemoryBarrier;
 	dstImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1518,8 +1549,8 @@ VkS::VKU_RESULT VkA::CopyTexture(VkU::CopyTextureInfo _copyTextureInfo)
 	submitInfo.pWaitDstStageMask = nullptr;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &_copyTextureInfo.setupCommandBuffer;
-	submitInfo.signalSemaphoreCount = 0;
-	submitInfo.pSignalSemaphores = nullptr;
+	submitInfo.signalSemaphoreCount = (uint32_t)_copyTextureInfo.signalSemaphores.size();
+	submitInfo.pSignalSemaphores = _copyTextureInfo.signalSemaphores.data();
 	VkU::vkApiResult = vkQueueSubmit(_copyTextureInfo.setupQueue, 1, &submitInfo, _copyTextureInfo.setupFence);
 	switch (VkU::vkApiResult)
 	{

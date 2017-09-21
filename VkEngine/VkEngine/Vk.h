@@ -164,11 +164,11 @@ namespace VkS
 		std::vector<VkImage> images;
 		std::vector<VkImageView> views;
 		std::vector<VkFramebuffer> framebuffers;
+		std::vector<VkCommandBuffer> secondaryCommandBuffers;
 
 		std::vector<VkFence> fences;
 		VkSemaphore imageAvailableSemaphore;
 		VkSemaphore renderDoneSemaphore;
-		std::vector<VkCommandBuffer> commandBuffers;
 
 		Texture* depthImage;
 		uint32_t imageIndex;
@@ -296,23 +296,67 @@ namespace VkU
 		VkBufferUsageFlags bufferUsageFlags;
 		VkMemoryPropertyFlags memoryPropertyFlags;
 	};
+
 	struct FillBufferInfo
 	{
-		VkDevice vkDevice;
-		VkS::Buffer dstBuffer;
-		VkDeviceSize offset;
-		VkDeviceSize size;
-		void* data;
+		VkDevice		vkDevice;
+		VkS::Buffer		dstBuffer;
+		VkDeviceSize	offset;
+		VkDeviceSize	size;
+		void*			data;
 	};
+	struct FillBufferInfo2
+	{
+		VkDevice						vkDevice;
+		VkS::Buffer						dstBuffer;
+		VkDeviceSize					targetBufferMemoryOffset;
+		VkDeviceSize					targetBufferMemorySize;
+		struct MemoryFillRegion
+		{
+			VkDeviceSize	targetBufferMemoryOffset;
+			VkDeviceSize	size;
+			void*			data;
+		};
+		std::vector<MemoryFillRegion>	memoryFillRegions;
+	};
+
 	struct CopyBufferInfo
 	{
-		VkDevice vkDevice;
-		VkFence setupFence;
-		VkQueue setupQueue;
-		VkCommandBuffer setupCommandBuffer;
-		VkBuffer srcBuffer;
-		std::vector<VkBufferCopy> copyRegions;
-		VkBuffer dstBuffer;
+		VkDevice					vkDevice;
+		VkFence						setupFence;
+		VkQueue						setupQueue;
+		VkCommandBuffer				setupCommandBuffer;
+		VkBuffer					srcBuffer;
+		std::vector<VkBufferCopy>	copyRegions;
+		VkBuffer					dstBuffer;
+		std::vector<VkSemaphore>	waitSemaphores;
+		std::vector<VkPipelineStageFlags> waitStageFlags;
+		std::vector<VkSemaphore>	signalSemaphores;
+	};
+	struct CopyBuffersInfo
+	{
+		VkCommandBuffer				commandBuffer;
+		VkBuffer					srcBuffer;
+		struct BufferRegion
+		{
+			VkBuffer					dstBuffer;
+			std::vector<VkBufferCopy>	copyRegions;
+		};
+		std::vector<BufferRegion>	bufferRegion;
+	};
+
+	struct CopyBufferInfo2
+	{
+		VkDevice					vkDevice;
+		VkCommandBuffer				setupCommandBuffer;
+		VkBuffer					srcBuffer;
+
+		struct CopyRegions
+		{
+			VkBuffer					dstBuffer;
+			std::vector<VkBufferCopy>	copyRegions;
+		};
+		std::vector<CopyRegions> copyRegions;
 	};
 
 	struct LoadImageDataInfo
@@ -341,12 +385,13 @@ namespace VkU
 	};
 	struct CopyTextureInfo
 	{
-		VkDevice vkDevice;
-		VkFence setupFence;
-		VkCommandBuffer setupCommandBuffer;
-		VkQueue setupQueue;
-		VkS::Texture srcTexture;
-		VkS::Texture dstTexture;
+		VkDevice					vkDevice;
+		VkFence						setupFence;
+		VkCommandBuffer				setupCommandBuffer;
+		VkQueue						setupQueue;
+		VkS::Texture				srcTexture;
+		VkS::Texture				dstTexture;
+		std::vector<VkSemaphore>	signalSemaphores;
 	};
 }
 
@@ -444,7 +489,9 @@ namespace VkA
 
 	VkS::VKU_RESULT CreateBuffer(VkS::Buffer& _buffer, VkU::CreateBufferInfo _createBufferInfo);
 	VkS::VKU_RESULT FillBuffer(VkU::FillBufferInfo _fillBufferInfo);
+	VkS::VKU_RESULT FillBuffer2(VkU::FillBufferInfo2 _fillBufferInfo2);
 	VkS::VKU_RESULT CopyBuffer(VkU::CopyBufferInfo _copyBufferInfo);
+	void CopyBuffers(VkU::CopyBuffersInfo _copyBuffersInfo);
 
 	VkS::VKU_RESULT LoadImageData(VkS::ImageData& _imageData, VkU::LoadImageDataInfo _loadImageDataInfo);
 	VkS::VKU_RESULT CreateTexture(VkS::Texture& _texture, VkU::CreateTextureInfo _createTextureInfo);

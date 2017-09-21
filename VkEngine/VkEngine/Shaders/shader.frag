@@ -17,6 +17,5 @@ layout(set = 1, binding = 0) uniform sampler2D diffuse;
 void main()
 {
 	vec4 textureColor = texture(diffuse, inTexCoord).rgba;
-	//outColor = vec4(inTexCoord.x, inTexCoord.y, 1.0, 1.0);
 	outColor = textureColor;
 }

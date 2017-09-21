@@ -17,14 +17,10 @@ void GpuController::Init(VkS::Device* _device)
 	scene.Init();
 
 	device = _device;
-
 	window = device->windows[0];
-	wireframeWindow = device->windows[1];
 
 	graphicsQueueGroupIndex = 0;
 	graphicsQueue = device->queueGroups[graphicsQueueGroupIndex].queues[0];
-
-	computeQueueGroupIndex = 1;
 
 	// setupFence
 	{
@@ -33,27 +29,6 @@ void GpuController::Init(VkS::Device* _device)
 		fenceCreateInfo.pNext = nullptr;
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 		VkU::vkApiResult = vkCreateFence(device->handle, &fenceCreateInfo, nullptr, &setupFence);
-	}
-
-	// CommandPool
-	{
-		VkCommandPoolCreateInfo commandPoolCreateInfo;
-		commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		commandPoolCreateInfo.pNext = nullptr;
-		commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		commandPoolCreateInfo.queueFamilyIndex = device->queueGroups[graphicsQueueGroupIndex].familyIndex;
-		VkU::vkApiResult = vkCreateCommandPool(device->handle, &commandPoolCreateInfo, nullptr, &graphicsCommandPool);
-	}
-
-	// setupCommandBuffer
-	{
-		VkCommandBufferAllocateInfo commandBufferAllocateInfo;
-		commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		commandBufferAllocateInfo.pNext = nullptr;
-		commandBufferAllocateInfo.commandPool = graphicsCommandPool;
-		commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		commandBufferAllocateInfo.commandBufferCount = 1;
-		VkU::vkApiResult = vkAllocateCommandBuffers(device->handle, &commandBufferAllocateInfo, &graphicsSetupCommandBuffer);
 	}
 
 	// renderPass
@@ -119,21 +94,40 @@ void GpuController::Init(VkS::Device* _device)
 		VkU::vkApiResult = vkCreateRenderPass(device->handle, &renderPassCreateInfo, nullptr, &renderPass);
 	}
 
+	// GraphicsCommandPool
+	{
+		VkCommandPoolCreateInfo commandPoolCreateInfo;
+		commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		commandPoolCreateInfo.pNext = nullptr;
+		commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		commandPoolCreateInfo.queueFamilyIndex = device->queueGroups[graphicsQueueGroupIndex].familyIndex;
+		VkU::vkApiResult = vkCreateCommandPool(device->handle, &commandPoolCreateInfo, nullptr, &graphicsCommandPool);
+	}
+
+	// GraphicsCommandBuffer
+	{
+		VkCommandBufferAllocateInfo commandBufferAllocateInfo;
+		commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		commandBufferAllocateInfo.pNext = nullptr;
+		commandBufferAllocateInfo.commandPool = graphicsCommandPool;
+		commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		commandBufferAllocateInfo.commandBufferCount = 1;
+		VkU::vkApiResult = vkAllocateCommandBuffers(device->handle, &commandBufferAllocateInfo, &graphicsCommandBuffer);
+	}
+
 	// Window Resources
 	{
 		VkU::CreateWindowResourcesInfo createWindowResourcesInfo;
 		createWindowResourcesInfo.vkDevice = device->handle;
 		createWindowResourcesInfo.physicalDevice = device->physicalDevice;
 		createWindowResourcesInfo.setupFence = setupFence;
-		createWindowResourcesInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+		createWindowResourcesInfo.setupCommandBuffer = graphicsCommandBuffer;
 		createWindowResourcesInfo.setupQueue = graphicsQueue;
 		createWindowResourcesInfo.graphicsCommandPool = graphicsCommandPool;
 		createWindowResourcesInfo.imageCount = 3;
 		createWindowResourcesInfo.renderPass = renderPass;
 
 		VkA::CreateWindowResources(*window, createWindowResourcesInfo);
-
-		VkA::CreateWindowResources(*wireframeWindow, createWindowResourcesInfo);
 	}
 
 	// DescriptorSetLayout
@@ -210,12 +204,6 @@ void GpuController::Init(VkS::Device* _device)
 
 		createShaderModuleInfo.filename = "Shaders/frag.spv";
 		VkA::CreateShaderModule(fragmentShaderModule, createShaderModuleInfo);
-
-		//createShaderModuleInfo.filename = "Shaders/tesc.spv";
-		//VkA::CreateShaderModule(tessalationControlShaderModule, createShaderModuleInfo);
-		//
-		//createShaderModuleInfo.filename = "Shaders/tese.spv";
-		//VkA::CreateShaderModule(tessalationEvaluationShaderModule, createShaderModuleInfo);
 	}
 
 	// PipelineData
@@ -240,22 +228,6 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].module = fragmentShaderModule;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].pName = "main";
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].pSpecializationInfo = nullptr;
-
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].pNext = nullptr;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].flags = VK_RESERVED_FOR_FUTURE_USE;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].module = tessalationControlShaderModule;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].pName = "main";
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].pSpecializationInfo = nullptr;
-			//
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[3].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[3].pNext = nullptr;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[3].flags = VK_RESERVED_FOR_FUTURE_USE;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[3].stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[3].module = tessalationEvaluationShaderModule;
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[3].pName = "main";
-			//pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[3].pSpecializationInfo = nullptr;
 		}
 
 		// Vertex Input
@@ -496,9 +468,9 @@ void GpuController::Init(VkS::Device* _device)
 
 		// staging
 		{
-			stagingBufferData = new uint8_t[1024 * 16 * sizeof(float)]; // 1024 floats
+			createBufferInfo.size = sizeof(uint8_t) * (2 + 1024) * sizeof(Math3D::Mat4); // 2 mat4(view projection) 1024 mat4(model matrices)
+			stagingBufferData = new uint8_t[createBufferInfo.size];
 
-			createBufferInfo.size = sizeof(uint8_t) * 16 * 1024 * sizeof(float);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 			VkA::CreateBuffer(stagingBuffer, createBufferInfo);
@@ -507,32 +479,34 @@ void GpuController::Init(VkS::Device* _device)
 		VkU::FillBufferInfo fillBufferInfo;
 		fillBufferInfo.vkDevice = device->handle;
 		fillBufferInfo.dstBuffer = stagingBuffer;
-		
+
 		VkU::CopyBufferInfo copyBufferInfo;
 		copyBufferInfo.vkDevice = device->handle;
 		copyBufferInfo.setupFence = setupFence;
 		copyBufferInfo.setupQueue = graphicsQueue;
-		copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+		copyBufferInfo.setupCommandBuffer = graphicsCommandBuffer;
 		copyBufferInfo.srcBuffer = stagingBuffer.handle;
 		copyBufferInfo.copyRegions.resize(1);
 		copyBufferInfo.copyRegions[0].srcOffset = 0;
 		copyBufferInfo.copyRegions[0].dstOffset = 0;
-		
+
 		// view projection
 		{
 			viewProjectionData[0] = scene.view;
-			viewProjectionData[1] = Math3D::GetPerspectiveMatrix(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
-		
+
+			Math3D::Mat4 a = Math3D::GetPerspectiveMatrix(45.0f, (float)window->extent.width / (float)window->extent.height, 0.1f, 1000.0f);
+			viewProjectionData[1] = Math3D2::Mat4::GetPerspectiveProjection(45.0f, (float)window->extent.width, (float)window->extent.height, 0.1f, 1000.0f);
+
 			createBufferInfo.size = sizeof(viewProjectionData);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 			VkA::CreateBuffer(viewProjectionBuffer, createBufferInfo);
-		
+
 			fillBufferInfo.offset = 0;
 			fillBufferInfo.size = sizeof(viewProjectionData);
 			fillBufferInfo.data = viewProjectionData;
 			VkA::FillBuffer(fillBufferInfo);
-		
+
 			copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
 			copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
 			VkA::CopyBuffer(copyBufferInfo);
@@ -541,60 +515,59 @@ void GpuController::Init(VkS::Device* _device)
 		// model matrices
 		{
 			ZeroMemory(modelMatricesData, sizeof(modelMatricesData));
-			modelMatricesData[0] = Math3D::GetMat4Identity();
-		
+
 			createBufferInfo.size = sizeof(modelMatricesData);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 			VkA::CreateBuffer(modelMatricesBuffer, createBufferInfo);
-		
+
 			fillBufferInfo.offset = 0;
 			fillBufferInfo.size = sizeof(modelMatricesData);
 			fillBufferInfo.data = modelMatricesData;
 			VkA::FillBuffer(fillBufferInfo);
-		
+
 			copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
 			copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
 			VkA::CopyBuffer(copyBufferInfo);
 		}
-		
+
 		// vertex buffer
 		{
 			float vertices[] = {
 				//	Position					TexCoord			Normal
-					+0.0f, -0.5f, -1.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
-					+0.5f, +0.5f, -1.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
-					-0.5f, +0.5f, -1.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
-		
+				+0.0f, -0.5f, -0.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
+				+0.5f, +0.5f, -0.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
+				-0.5f, +0.5f, -0.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
+
 			createBufferInfo.size = sizeof(vertices);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 			VkA::CreateBuffer(vertexBuffer, createBufferInfo);
-		
+
 			fillBufferInfo.offset = 0;
 			fillBufferInfo.size = sizeof(vertices);
 			fillBufferInfo.data = vertices;
 			VkA::FillBuffer(fillBufferInfo);
-		
+
 			copyBufferInfo.copyRegions[0].size = vertexBuffer.size;
 			copyBufferInfo.dstBuffer = vertexBuffer.handle;
 			VkA::CopyBuffer(copyBufferInfo);
 		}
-		
+
 		// index buffer
 		{
 			uint16_t indices[] = { 0, 1, 2 };
-		
+
 			createBufferInfo.size = sizeof(indices);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 			VkA::CreateBuffer(indexBuffer, createBufferInfo);
-		
+
 			fillBufferInfo.offset = 0;
 			fillBufferInfo.size = sizeof(indices);
 			fillBufferInfo.data = indices;
 			VkA::FillBuffer(fillBufferInfo);
-		
+
 			copyBufferInfo.copyRegions[0].size = indexBuffer.size;
 			copyBufferInfo.dstBuffer = indexBuffer.handle;
 			VkA::CopyBuffer(copyBufferInfo);
@@ -614,7 +587,7 @@ void GpuController::Init(VkS::Device* _device)
 		VkU::CopyTextureInfo copyTextureInfo;
 		copyTextureInfo.vkDevice = device->handle;
 		copyTextureInfo.setupFence = setupFence;
-		copyTextureInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
+		copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
 		copyTextureInfo.setupQueue = graphicsQueue;
 
 		// Staging
@@ -767,7 +740,7 @@ void GpuController::Init(VkS::Device* _device)
 		diffuseDescriptorImageInfo.sampler = sampler;
 		diffuseDescriptorImageInfo.imageView = texture.view;
 		diffuseDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		
+
 		writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[2].pNext = nullptr;
 		writeDescriptorSet[2].dstSet = diffuseDescriptorSet;
@@ -782,172 +755,228 @@ void GpuController::Init(VkS::Device* _device)
 		vkUpdateDescriptorSets(device->handle, (uint32_t)writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
 	}
 }
-
-void GpuController::Draw(VkS::Window* _window, uint32_t _pipelineIndex)
+void GpuController::Run()
 {
-	vkWaitForFences(device->handle, 1, &setupFence, VK_TRUE, -1);
-	vkResetFences(device->handle, 1, &setupFence);
-	vkAcquireNextImageKHR(device->handle, _window->swapchain, ~0U, _window->imageAvailableSemaphore, setupFence, &_window->imageIndex);
+	double newTime = timer.GetTime();
+	deltaTime = lastTime - newTime;
+	lastTime = newTime;
 
-	// Draw Fill
+	// Draw o secondary command buffer
 	{
+		//std::cout << "Aquire\n";
+		vkWaitForFences(device->handle, 1, &setupFence, VK_TRUE, -1);
+		vkResetFences(device->handle, 1, &setupFence);
+		vkAcquireNextImageKHR(device->handle, window->swapchain, ~0U, window->imageAvailableSemaphore, setupFence, &window->imageIndex);
+
+		VkCommandBufferInheritanceInfo commandBufferInheritanceInfo;
+		commandBufferInheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+		commandBufferInheritanceInfo.pNext = nullptr;
+		commandBufferInheritanceInfo.renderPass = renderPass;
+		commandBufferInheritanceInfo.subpass = 0;
+		commandBufferInheritanceInfo.framebuffer = window->framebuffers[window->imageIndex];
+		commandBufferInheritanceInfo.occlusionQueryEnable = VK_FALSE;
+		commandBufferInheritanceInfo.queryFlags = 0;
+		commandBufferInheritanceInfo.pipelineStatistics = 0;
+
 		VkCommandBufferBeginInfo commandBufferBeginInfo;
 		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		commandBufferBeginInfo.pNext = nullptr;
-		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+		commandBufferBeginInfo.pInheritanceInfo = &commandBufferInheritanceInfo;
 
-		vkWaitForFences(device->handle, 1, &_window->fences[_window->imageIndex], VK_TRUE, -1);
-		vkResetFences(device->handle, 1, &_window->fences[_window->imageIndex]);
+		//std::cout << "SecondaryBegin\n";
+		//vkWaitForFences(device->handle, 1, &window->fences[window->imageIndex], VK_TRUE, -1);
+		//vkResetFences(device->handle, 1, &window->fences[window->imageIndex]);
 
-		vkBeginCommandBuffer(_window->commandBuffers[_window->imageIndex], &commandBufferBeginInfo);
-
-		VkClearValue clearColor[2];
-		clearColor[0].color = { 1.0f, 0.0f, 0.0f, 0.0f };
-		clearColor[1].depthStencil = { 1.0f, 0 };
-
-		VkRenderPassBeginInfo renderPassBeginInfo;
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.pNext = nullptr;
-		renderPassBeginInfo.renderPass = renderPass;
-		renderPassBeginInfo.framebuffer = _window->framebuffers[_window->imageIndex];
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent = { _window->extent.width, _window->extent.height };
-		renderPassBeginInfo.clearValueCount = sizeof(clearColor) / sizeof(VkClearValue);
-		renderPassBeginInfo.pClearValues = clearColor;
-		vkCmdBeginRenderPass(_window->commandBuffers[_window->imageIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkBeginCommandBuffer(window->secondaryCommandBuffers[window->imageIndex], &commandBufferBeginInfo);
 
 		VkDeviceSize offset = 0;
 
-		vkCmdBindPipeline(_window->commandBuffers[_window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelines[_pipelineIndex]);
-		std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseDescriptorSet };
-		vkCmdBindDescriptorSets(_window->commandBuffers[_window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush4Vert4FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+		struct VertexShaderPushConstantData
+		{
+			uint32_t modelMatrixIndex = 0;
+			float red = 0.0f;
+			float green = 0.0f;
+			float blue = 0.0f;
+		} vertexShaderPushConstantData;
 
-		// vkCmdPushConstants(swapchain.commandBuffers[swapchain.imageIndex], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vertexShaderPushConstantData), &vertexShaderPushConstantData);
+		{
+			vkCmdBindPipeline(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelines[0]);
+			std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseDescriptorSet };
+			vkCmdBindDescriptorSets(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush4Vert4FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
-		vkCmdBindVertexBuffers(_window->commandBuffers[_window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
-		vkCmdBindIndexBuffer(_window->commandBuffers[_window->imageIndex], indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush4Vert4FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VertexShaderPushConstantData), &vertexShaderPushConstantData);
 
-		vkCmdDrawIndexed(_window->commandBuffers[_window->imageIndex], 6, 1, 0, 0, 0);
+			vkCmdBindVertexBuffers(window->secondaryCommandBuffers[window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
+			vkCmdBindIndexBuffer(window->secondaryCommandBuffers[window->imageIndex], indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
 
-		vkCmdEndRenderPass(_window->commandBuffers[_window->imageIndex]);
+			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], 6, 1, 0, 0, 0);
+		}
 
-		vkEndCommandBuffer(_window->commandBuffers[_window->imageIndex]);
+		vkEndCommandBuffer(window->secondaryCommandBuffers[window->imageIndex]);
 	}
-}
 
-void GpuController::Run()
-{
 	VkCommandBufferBeginInfo commandBufferBeginInfo;
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	commandBufferBeginInfo.pNext = nullptr;
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
-	VkU::CopyBufferInfo copyBufferInfo;
-	copyBufferInfo.vkDevice = device->handle;
-	copyBufferInfo.setupFence = setupFence;
-	copyBufferInfo.setupQueue = graphicsQueue;
-	copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
-	copyBufferInfo.srcBuffer = stagingBuffer.handle;
-	copyBufferInfo.copyRegions.resize(1);
-	copyBufferInfo.copyRegions[0].srcOffset = 0;
-	copyBufferInfo.copyRegions[0].dstOffset = 0;
+	vkWaitForFences(device->handle, 1, &setupFence, VK_TRUE, -1);
+	vkResetFences(device->handle, 1, &setupFence);
 
-	// Draw
-	Draw(window, 0);
-	Draw(wireframeWindow, 1);
+	vkBeginCommandBuffer(graphicsCommandBuffer, &commandBufferBeginInfo);
 
-	// Update uniforms
+	// Update camera
 	{
-		/// TODO: Get below to work properly
-		//VkU::FillBufferInfo fillBufferInfo;
-		//fillBufferInfo.vkDevice = device->handle;
-		//fillBufferInfo.dstBuffer = stagingBuffer;
-		//
-		//VkU::CopyBufferInfo copyBufferInfo;
-		//copyBufferInfo.vkDevice = device->handle;
-		//copyBufferInfo.setupFence = setupFence;
-		//copyBufferInfo.setupQueue = graphicsQueue;
-		//copyBufferInfo.setupCommandBuffer = graphicsSetupCommandBuffer;
-		//copyBufferInfo.srcBuffer = stagingBuffer.handle;
-		//copyBufferInfo.copyRegions.resize(1);
-		//copyBufferInfo.copyRegions[0].srcOffset = 0;
-		//copyBufferInfo.copyRegions[0].dstOffset = 0;
-		//
-		//// view projection
-		//fillBufferInfo.offset = 0;
-		//fillBufferInfo.size = sizeof(viewProjectionData);
-		//fillBufferInfo.data = viewProjectionData;
-		//VkA::FillBuffer(fillBufferInfo);
-		//
-		//copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
-		//copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
-		//VkA::CopyBuffer(copyBufferInfo);
-		//
-		//// model matrices
-		//fillBufferInfo.offset = 0;
-		//fillBufferInfo.size = sizeof(modelMatricesData);
-		//fillBufferInfo.data = modelMatricesData;
-		//VkA::FillBuffer(fillBufferInfo);
-		//
-		//copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
-		//copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
-		//VkA::CopyBuffer(copyBufferInfo);
+		if (GetAsyncKeyState('A'))
+			scene.cameraPosition.x -= (float)(deltaTime);
+		if (GetAsyncKeyState('D'))
+			scene.cameraPosition.x += (float)(deltaTime);
+
+		if (GetAsyncKeyState('Q'))
+			scene.cameraPosition.y -= (float)(deltaTime);
+		if (GetAsyncKeyState('E'))
+			scene.cameraPosition.y += (float)(deltaTime);
+
+		if (GetAsyncKeyState('W'))
+			scene.cameraPosition.z -= (float)(deltaTime);
+		if (GetAsyncKeyState('S'))
+			scene.cameraPosition.z += (float)(deltaTime);
+
+		scene.view = Math3D2::Mat4::GetLookAt(scene.cameraPosition, scene.cameraTarget, scene.cameraUp);
+
+		viewProjectionData[0] = scene.view;
 	}
+
+	// Update model
+	{
+		static Math3D2::Mat4 transform = Math3D2::Mat4::GetIdentity();
+		
+		if (!GetAsyncKeyState(VK_SHIFT))
+		{
+			if (GetAsyncKeyState('J'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
+			if (GetAsyncKeyState('L'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(+deltaTime), 0.0f, 0.0f }) * transform;
+
+			if (GetAsyncKeyState('U'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
+			if (GetAsyncKeyState('O'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(+deltaTime), 0.0f }) * transform;
+
+			if (GetAsyncKeyState('I'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
+			if (GetAsyncKeyState('K'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(+deltaTime) }) * transform;
+		}
+		else
+		{
+			if (GetAsyncKeyState('J'))
+				transform = Math3D2::Mat4::GetRotateXMatrix((float)(-deltaTime)) * transform;
+			if (GetAsyncKeyState('L'))
+				transform = Math3D2::Mat4::GetRotateXMatrix((float)(+deltaTime)) * transform;
+
+			if (GetAsyncKeyState('U'))
+				transform = Math3D2::Mat4::GetRotateYMatrix((float)(-deltaTime)) * transform;
+			if (GetAsyncKeyState('O'))
+				transform = Math3D2::Mat4::GetRotateYMatrix((float)(+deltaTime)) * transform;
+
+			if (GetAsyncKeyState('I'))
+				transform = Math3D2::Mat4::GetRotateZMatrix((float)(-deltaTime)) * transform;
+			if (GetAsyncKeyState('K'))
+				transform = Math3D2::Mat4::GetRotateZMatrix((float)(+deltaTime)) * transform;
+		}
+
+		modelMatricesData[0] = transform;
+	}
+
+	// Fill Staging
+	{
+		VkU::FillBufferInfo2 fillBufferInfo2;
+		fillBufferInfo2.vkDevice = device->handle;
+		fillBufferInfo2.dstBuffer = stagingBuffer;
+		fillBufferInfo2.targetBufferMemoryOffset = 0;
+		fillBufferInfo2.targetBufferMemorySize = stagingBuffer.size;
+		fillBufferInfo2.memoryFillRegions.resize(2);
+
+		fillBufferInfo2.memoryFillRegions[0].targetBufferMemoryOffset = 0;
+		fillBufferInfo2.memoryFillRegions[0].size = sizeof(viewProjectionData);
+		fillBufferInfo2.memoryFillRegions[0].data = viewProjectionData;
+
+		fillBufferInfo2.memoryFillRegions[1].targetBufferMemoryOffset = sizeof(viewProjectionData);
+		fillBufferInfo2.memoryFillRegions[1].size = sizeof(modelMatricesData);
+		fillBufferInfo2.memoryFillRegions[1].data = modelMatricesData;
+		VkA::FillBuffer2(fillBufferInfo2);
+	}
+
+	// Copy from staging to device buffers
+	{
+		VkU::CopyBuffersInfo copyBuffersInfo;
+		copyBuffersInfo.commandBuffer = graphicsCommandBuffer;
+		copyBuffersInfo.srcBuffer = stagingBuffer.handle;
+
+		copyBuffersInfo.bufferRegion.resize(2);
+		copyBuffersInfo.bufferRegion[0].dstBuffer = viewProjectionBuffer.handle;
+		copyBuffersInfo.bufferRegion[0].copyRegions.resize(1);
+		copyBuffersInfo.bufferRegion[0].copyRegions[0].srcOffset = 0;
+		copyBuffersInfo.bufferRegion[0].copyRegions[0].dstOffset = 0;
+		copyBuffersInfo.bufferRegion[0].copyRegions[0].size = sizeof(viewProjectionData);
+
+		copyBuffersInfo.bufferRegion[1].dstBuffer = modelMatricesBuffer.handle;
+		copyBuffersInfo.bufferRegion[1].copyRegions.resize(1);
+		copyBuffersInfo.bufferRegion[1].copyRegions[0].srcOffset = sizeof(viewProjectionData);
+		copyBuffersInfo.bufferRegion[1].copyRegions[0].dstOffset = 0;
+		copyBuffersInfo.bufferRegion[1].copyRegions[0].size = sizeof(modelMatricesData);
+		VkA::CopyBuffers(copyBuffersInfo);
+	}
+
+	VkClearValue clearColor[2];
+	clearColor[0].color = { 0.3f, 0.3f, 0.5f, 0.0f };
+	clearColor[1].depthStencil = { 1.0f, 0 };
+
+	VkRenderPassBeginInfo renderPassBeginInfo;
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.pNext = nullptr;
+	renderPassBeginInfo.renderPass = renderPass;
+	renderPassBeginInfo.framebuffer = window->framebuffers[window->imageIndex];
+	renderPassBeginInfo.renderArea.offset = { 0, 0 };
+	renderPassBeginInfo.renderArea.extent = { window->extent.width, window->extent.height };
+	renderPassBeginInfo.clearValueCount = sizeof(clearColor) / sizeof(VkClearValue);
+	renderPassBeginInfo.pClearValues = clearColor;
+	vkCmdBeginRenderPass(graphicsCommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+		vkCmdExecuteCommands(graphicsCommandBuffer, 1, &window->secondaryCommandBuffers[window->imageIndex]);
+
+	vkCmdEndRenderPass(graphicsCommandBuffer);
+
+	vkEndCommandBuffer(graphicsCommandBuffer);
 
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	// Render Fill
-	{
-		VkSubmitInfo submitInfo;
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pNext = nullptr;
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &window->imageAvailableSemaphore;
-		submitInfo.pWaitDstStageMask = waitStages;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &window->commandBuffers[window->imageIndex];
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &window->renderDoneSemaphore;
-		vkQueueSubmit(graphicsQueue, 1, &submitInfo, window->fences[window->imageIndex]);
+	std::vector<VkSemaphore> waitSemaphores = { window->imageAvailableSemaphore };
 
-		VkPresentInfoKHR presentInfo;
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.pNext = nullptr;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &window->renderDoneSemaphore;
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = &window->swapchain;
-		presentInfo.pImageIndices = &window->imageIndex;
-		presentInfo.pResults = nullptr;
-		vkQueuePresentKHR(graphicsQueue, &presentInfo);
-	}
-
-	// Render Wireframe
-	{
-		VkSubmitInfo submitInfo;
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pNext = nullptr;
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &wireframeWindow->imageAvailableSemaphore;
-		submitInfo.pWaitDstStageMask = waitStages;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &wireframeWindow->commandBuffers[wireframeWindow->imageIndex];
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &wireframeWindow->renderDoneSemaphore;
-		vkQueueSubmit(graphicsQueue, 1, &submitInfo, wireframeWindow->fences[wireframeWindow->imageIndex]);
-
-		VkPresentInfoKHR presentInfo;
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.pNext = nullptr;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &wireframeWindow->renderDoneSemaphore;
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = &wireframeWindow->swapchain;
-		presentInfo.pImageIndices = &wireframeWindow->imageIndex;
-		presentInfo.pResults = nullptr;
-		vkQueuePresentKHR(graphicsQueue, &presentInfo);
-	}
+	VkSubmitInfo submitInfo;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = nullptr;
+	submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
+	submitInfo.pWaitSemaphores = waitSemaphores.data();
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &graphicsCommandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &window->renderDoneSemaphore;
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, setupFence);
+	
+	VkPresentInfoKHR presentInfo;
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext = nullptr;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &window->renderDoneSemaphore;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &window->swapchain;
+	presentInfo.pImageIndices = &window->imageIndex;
+	presentInfo.pResults = nullptr;
+	vkQueuePresentKHR(graphicsQueue, &presentInfo);
 
 	MSG msg;
 	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -956,10 +985,9 @@ void GpuController::Run()
 		DispatchMessage(&msg);
 	}
 }
-
 void GpuController::ShutDown()
 {
-	std::vector<VkS::Window*> windows = { window, wireframeWindow };
+	std::vector<VkS::Window*> windows = { window };
 
 	vkWaitForFences(device->handle, 1, &setupFence, VK_TRUE, ~0U);
 	for (size_t iWindow = 0; iWindow != windows.size(); ++iWindow)
@@ -1001,7 +1029,7 @@ void GpuController::ShutDown()
 	delete[] stagingBufferData;
 
 	// Pipeline
-	for(size_t iPipeline = 0; iPipeline != graphicsPipelines.size(); ++iPipeline)
+	for (size_t iPipeline = 0; iPipeline != graphicsPipelines.size(); ++iPipeline)
 		vkDestroyPipeline(device->handle, graphicsPipelines[iPipeline], nullptr);
 
 	// Shader Module
