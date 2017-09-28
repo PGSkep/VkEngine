@@ -122,6 +122,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Input.h" />
+    <ClInclude Include="Loader.h" />
     <ClInclude Include="Math3D.h" />
     <ClInclude Include="Gpu.h" />
     <ClInclude Include="GpuController.h" />

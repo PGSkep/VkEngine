@@ -205,6 +205,36 @@ namespace VkS
 	};
 }
 
+namespace VkD
+{
+	enum VERTEX_DATATYPE
+	{
+		VDT_NONE = 0x0000,
+
+		VDT_X							= 0x0001,
+		VDT_Y							= 0x0002,
+		VDT_Z							= 0x0004,
+		VDT_UV							= 0x0008,
+
+		VDT_R							= 0x0010,
+		VDT_G							= 0x0020,
+		VDT_B							= 0x0040,
+		VDT_A							= 0x0080,
+
+		VDT_SKELETON_1_BONE_PER_VERTEX	= 0x0100,
+		VDT_SKELETON_2_BONE_PER_VERTEX	= 0x0200,
+		VDT_SKELETON_4_BONE_PER_VERTEX	= 0x0400,
+		VDT_SKELETON_8_BONE_PER_VERTEX	= 0x0800,
+
+		VDT_SKELETON_BONE_INDEX_SIZE_8	= 0x1000,
+		VDT_SKELETON_BONE_INDEX_SIZE_16	= 0x2000,
+		VDT_NORMAL						= 0x4000,
+		VDT_TANGENT_BITANGENT			= 0x8000,
+
+		VDT_MAX							= 0x80000000
+	};
+}
+
 namespace VkU
 {
 	static VkResult vkApiResult = VK_SUCCESS;

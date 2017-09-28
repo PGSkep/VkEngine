@@ -5,9 +5,12 @@
 
 #include "Scene.h"
 #include "Timer.h"
+#include "Loader.h"
 
 class GpuController
 {
+	uint32_t indexCount;
+
 	Timer timer;
 	double lastTime;
 	double deltaTime;

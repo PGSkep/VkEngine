@@ -530,21 +530,40 @@ void GpuController::Init(VkS::Device* _device)
 			VkA::CopyBuffer(copyBufferInfo);
 		}
 
+		Loader::ModelData modelData;
+		modelData.LoadModel("Models/cube.fbx",
+			VkD::VDT_X
+			| VkD::VDT_Y
+			| VkD::VDT_Z
+			| VkD::VDT_UV
+			//| VkD::VDT_R
+			//| VkD::VDT_G
+			//| VkD::VDT_B
+			//| VkD::VDT_A
+			//| VkD::VDT_SKELETON_1_BONE_PER_VERTEX
+			//| VkD::VDT_SKELETON_BONE_INDEX_SIZE_16
+			| VkD::VDT_NORMAL
+			//| VkD::VDT_TANGENT_BITANGENT
+			, true);
+		indexCount = modelData.indexDataCount;
+
 		// vertex buffer
 		{
-			float vertices[] = {
-				//	Position					TexCoord			Normal
-				+0.0f, -0.5f, -0.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
-				+0.5f, +0.5f, -0.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
-				-0.5f, +0.5f, -0.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
+			void* vertices = modelData.vertexData;
+			VkDeviceSize vSize = modelData.vertexDataSize;
+			//float vertices[] = {
+			//	//	Position					TexCoord			Normal
+			//	+0.0f, -0.5f, -0.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
+			//	+0.5f, +0.5f, -0.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
+			//	-0.5f, +0.5f, -0.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
 
-			createBufferInfo.size = sizeof(vertices);
+			createBufferInfo.size = vSize;
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 			VkA::CreateBuffer(vertexBuffer, createBufferInfo);
 
 			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(vertices);
+			fillBufferInfo.size = vSize;
 			fillBufferInfo.data = vertices;
 			VkA::FillBuffer(fillBufferInfo);
 
@@ -555,15 +574,17 @@ void GpuController::Init(VkS::Device* _device)
 
 		// index buffer
 		{
-			uint16_t indices[] = { 0, 1, 2 };
+			void* indices = modelData.indexData;
+			VkDeviceSize iSize = modelData.indexDataSize;
+			//uint16_t indices[] = { 0, 1, 2 };
 
-			createBufferInfo.size = sizeof(indices);
+			createBufferInfo.size = iSize;
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 			VkA::CreateBuffer(indexBuffer, createBufferInfo);
 
 			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(indices);
+			fillBufferInfo.size = iSize;
 			fillBufferInfo.data = indices;
 			VkA::FillBuffer(fillBufferInfo);
 
@@ -603,7 +624,7 @@ void GpuController::Init(VkS::Device* _device)
 		imageData.data = nullptr;
 		VkU::LoadImageDataInfo loadImageDataInfo;
 
-		loadImageDataInfo.fileName = "Textures/test.tga";
+		loadImageDataInfo.fileName = "Textures/rocks.tga";
 		VkA::LoadImageData(imageData, loadImageDataInfo);
 
 		createTextureInfo.format = imageData.format;
@@ -809,7 +830,7 @@ void GpuController::Run()
 			vkCmdBindVertexBuffers(window->secondaryCommandBuffers[window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
 			vkCmdBindIndexBuffer(window->secondaryCommandBuffers[window->imageIndex], indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
 
-			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], 6, 1, 0, 0, 0);
+			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], indexCount, 1, 0, 0, 0);
 		}
 
 		vkEndCommandBuffer(window->secondaryCommandBuffers[window->imageIndex]);
