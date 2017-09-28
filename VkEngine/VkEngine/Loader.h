@@ -130,14 +130,8 @@ namespace Loader
 				if ((_vertexDataType & VkD::VDT_SKELETON_BONE_INDEX_SIZE_16) == VkD::VDT_SKELETON_BONE_INDEX_SIZE_16)
 					missingVertexTypes = (VkD::VERTEX_DATATYPE)(missingVertexTypes | VkD::VDT_SKELETON_BONE_INDEX_SIZE_16);
 
-				if ((_vertexDataType & VkD::VDT_SKELETON_1_BONE_PER_VERTEX) == VkD::VDT_SKELETON_1_BONE_PER_VERTEX)
-					missingVertexTypes = (VkD::VERTEX_DATATYPE)(missingVertexTypes | VkD::VDT_SKELETON_1_BONE_PER_VERTEX);
-				if ((_vertexDataType & VkD::VDT_SKELETON_2_BONE_PER_VERTEX) == VkD::VDT_SKELETON_2_BONE_PER_VERTEX)
-					missingVertexTypes = (VkD::VERTEX_DATATYPE)(missingVertexTypes | VkD::VDT_SKELETON_2_BONE_PER_VERTEX);
 				if ((_vertexDataType & VkD::VDT_SKELETON_4_BONE_PER_VERTEX) == VkD::VDT_SKELETON_4_BONE_PER_VERTEX)
 					missingVertexTypes = (VkD::VERTEX_DATATYPE)(missingVertexTypes | VkD::VDT_SKELETON_4_BONE_PER_VERTEX);
-				if ((_vertexDataType & VkD::VDT_SKELETON_8_BONE_PER_VERTEX) == VkD::VDT_SKELETON_8_BONE_PER_VERTEX)
-					missingVertexTypes = (VkD::VERTEX_DATATYPE)(missingVertexTypes | VkD::VDT_SKELETON_8_BONE_PER_VERTEX);
 			}
 			if (!pScene->mMeshes[0]->HasNormals())
 			{
@@ -163,10 +157,7 @@ namespace Loader
 			// get bone size and count
 			uint32_t boneIndexSize = (((vertexDataType & VkD::VDT_SKELETON_BONE_INDEX_SIZE_8) == VkD::VDT_SKELETON_BONE_INDEX_SIZE_8) * sizeof(uint8_t)) +
 				(((vertexDataType & VkD::VDT_SKELETON_BONE_INDEX_SIZE_16) == VkD::VDT_SKELETON_BONE_INDEX_SIZE_16) * sizeof(uint16_t));
-			uint32_t bonePerVertexCount = (((vertexDataType & VkD::VDT_SKELETON_1_BONE_PER_VERTEX) == VkD::VDT_SKELETON_1_BONE_PER_VERTEX) * 1) +
-				(((vertexDataType & VkD::VDT_SKELETON_2_BONE_PER_VERTEX) == VkD::VDT_SKELETON_2_BONE_PER_VERTEX) * 2) +
-				(((vertexDataType & VkD::VDT_SKELETON_4_BONE_PER_VERTEX) == VkD::VDT_SKELETON_4_BONE_PER_VERTEX) * 4) +
-				(((vertexDataType & VkD::VDT_SKELETON_8_BONE_PER_VERTEX) == VkD::VDT_SKELETON_8_BONE_PER_VERTEX) * 8);
+			uint32_t bonePerVertexCount = (((vertexDataType & VkD::VDT_SKELETON_4_BONE_PER_VERTEX) == VkD::VDT_SKELETON_4_BONE_PER_VERTEX) * 4);
 
 			// get vertex size
 			uint32_t vertexSize = (

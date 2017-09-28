@@ -209,7 +209,8 @@ namespace VkD
 {
 	enum VERTEX_DATATYPE
 	{
-		VDT_NONE = 0x0000,
+		// (VDT_X | VDT_Y) is valid, (VDT_Y | VDT_Z) is not, same follows for RGBA and NTB
+		VDT_NONE						= 0x0000,
 
 		VDT_X							= 0x0001,
 		VDT_Y							= 0x0002,
@@ -221,18 +222,20 @@ namespace VkD
 		VDT_B							= 0x0040,
 		VDT_A							= 0x0080,
 
-		VDT_SKELETON_1_BONE_PER_VERTEX	= 0x0100,
-		VDT_SKELETON_2_BONE_PER_VERTEX	= 0x0200,
-		VDT_SKELETON_4_BONE_PER_VERTEX	= 0x0400,
-		VDT_SKELETON_8_BONE_PER_VERTEX	= 0x0800,
+		VDT_SKELETON_4_BONE_PER_VERTEX	= 0x0100,
+		VDT_SKELETON_BONE_INDEX_SIZE_8	= 0x0200,
+		VDT_SKELETON_BONE_INDEX_SIZE_16	= 0x0400,
 
-		VDT_SKELETON_BONE_INDEX_SIZE_8	= 0x1000,
-		VDT_SKELETON_BONE_INDEX_SIZE_16	= 0x2000,
-		VDT_NORMAL						= 0x4000,
-		VDT_TANGENT_BITANGENT			= 0x8000,
+		//0x0800
+
+		VDT_NORMAL						= 0x1000,
+		VDT_TANGENT_BITANGENT			= 0x2000,
 
 		VDT_MAX							= 0x80000000
 	};
+
+	uint32_t GetVertexStride(VERTEX_DATATYPE _vertexDatatype);
+	std::vector<VkVertexInputAttributeDescription> GetVertexInputAttributeDescriptions(VERTEX_DATATYPE _vertexDatatype);
 }
 
 namespace VkU

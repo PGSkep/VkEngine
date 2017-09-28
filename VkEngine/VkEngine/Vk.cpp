@@ -1574,3 +1574,203 @@ VkS::VKU_RESULT VkA::CopyTexture(VkU::CopyTextureInfo _copyTextureInfo)
 
 	return vkuResult;
 }
+
+uint32_t VkD::GetVertexStride(VERTEX_DATATYPE _vertexDatatype)
+{
+	uint32_t stride = 0;
+
+	char indexSize = 0;
+
+	if ((_vertexDatatype & VDT_X) == VDT_X)
+		stride += sizeof(float);
+	if ((_vertexDatatype & VDT_Y) == VDT_Y)
+		stride += sizeof(float);
+	if ((_vertexDatatype & VDT_Z) == VDT_Z)
+		stride += sizeof(float);
+
+	if ((_vertexDatatype & VDT_UV) == VDT_UV)
+		stride += sizeof(float) * 2;
+
+	if ((_vertexDatatype & VDT_R) == VDT_R)
+		stride += sizeof(float);
+	if ((_vertexDatatype & VDT_G) == VDT_G)
+		stride += sizeof(float);
+	if ((_vertexDatatype & VDT_B) == VDT_B)
+		stride += sizeof(float);
+	if ((_vertexDatatype & VDT_A) == VDT_A)
+		stride += sizeof(float);
+
+	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8)
+		indexSize = sizeof(uint8_t);
+	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16)
+	{
+		if (indexSize > 0)
+			return 0;
+
+		indexSize = sizeof(uint16_t);
+	}
+
+	if ((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX)
+		stride += (sizeof(float) + indexSize) * 4;
+
+	if ((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL)
+		stride += sizeof(float) * 3;
+	if ((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT)
+		stride += sizeof(float) * 6;
+
+	return stride;
+}
+std::vector<VkVertexInputAttributeDescription> VkD::GetVertexInputAttributeDescriptions(VERTEX_DATATYPE _vertexDatatype)
+{
+	uint32_t attributeCount = 0;
+	uint32_t attributeIndex = 0;
+	uint32_t attributeOffset = 0;
+
+	if ((_vertexDatatype & VDT_X) == VDT_X)
+		++attributeCount;
+
+	if ((_vertexDatatype & VDT_UV) == VDT_UV)
+		++attributeCount;
+
+	if ((_vertexDatatype & VDT_R) == VDT_R)
+		++attributeCount;
+
+	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8)
+		++++attributeCount;
+	else if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16)
+		++++attributeCount;
+
+	if ((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL)
+		++attributeCount;
+	if ((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT)
+		++++attributeCount;
+
+	char indexSize = 0;
+
+	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8)
+		indexSize = sizeof(uint8_t);
+	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16)
+	{
+		if (indexSize > 0)
+			return {};
+
+		indexSize = sizeof(uint16_t);
+	}
+
+	std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescription(attributeCount);
+
+	// position
+	if ((_vertexDatatype & VDT_X) == VDT_X && (_vertexDatatype & VDT_Y) == VDT_Y && (_vertexDatatype & VDT_Z) == VDT_Z)
+	{
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			((_vertexDatatype & VDT_X) == VDT_X) * VK_FORMAT_R32_SFLOAT +
+			((_vertexDatatype & VDT_Y) == VDT_Y) * (VK_FORMAT_R32G32_SFLOAT - VK_FORMAT_R32_SFLOAT) +
+			((_vertexDatatype & VDT_Z) == VDT_Z) * (VK_FORMAT_R32G32B32_SFLOAT - VK_FORMAT_R32G32_SFLOAT));
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			((_vertexDatatype & VDT_X) == VDT_X) * sizeof(float) +
+			((_vertexDatatype & VDT_Y) == VDT_Y) * sizeof(float) +
+			((_vertexDatatype & VDT_Z) == VDT_Z) * sizeof(float);
+		++attributeIndex;
+	}
+
+	// uv
+	if ((_vertexDatatype & VDT_UV) == VDT_UV)
+	{
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			((_vertexDatatype & VDT_UV) == VDT_UV) * VK_FORMAT_R32G32_SFLOAT);
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			((_vertexDatatype & VDT_UV) == VDT_UV) * sizeof(float) * 2;
+		++attributeIndex;
+	}
+
+	// color
+	if ((_vertexDatatype & VDT_R) == VDT_R && (_vertexDatatype & VDT_G) == VDT_G && (_vertexDatatype & VDT_B) == VDT_B && (_vertexDatatype & VDT_A) == VDT_A)
+	{
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			((_vertexDatatype & VDT_R) == VDT_R) * VK_FORMAT_R32_SFLOAT +
+			((_vertexDatatype & VDT_G) == VDT_G) * (VK_FORMAT_R32G32_SFLOAT - VK_FORMAT_R32_SFLOAT) +
+			((_vertexDatatype & VDT_B) == VDT_B) * (VK_FORMAT_R32G32B32_SFLOAT - VK_FORMAT_R32G32_SFLOAT) +
+			((_vertexDatatype & VDT_A) == VDT_A) * (VK_FORMAT_R32G32B32A32_SFLOAT - VK_FORMAT_R32G32B32_SFLOAT));
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			((_vertexDatatype & VDT_R) == VDT_R) * sizeof(float) +
+			((_vertexDatatype & VDT_G) == VDT_G) * sizeof(float) +
+			((_vertexDatatype & VDT_B) == VDT_B) * sizeof(float) +
+			((_vertexDatatype & VDT_A) == VDT_A) * sizeof(float);
+		++attributeIndex;
+	}
+
+	// bone indices
+	if (((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8) ^ ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16))
+	{
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			(indexSize == sizeof(uint8_t)) * VK_FORMAT_R8_UINT +
+			(indexSize == sizeof(uint16_t)) * VK_FORMAT_R16_UINT);
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			(indexSize == sizeof(uint8_t)) * sizeof(uint8_t) * 4 +
+			(indexSize == sizeof(uint16_t)) * sizeof(uint16_t) * 4;
+		++attributeIndex;
+	}
+
+	// bone weights
+	if ((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX)
+	{
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX) * VK_FORMAT_R32G32B32A32_SFLOAT);
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX) * sizeof(float) * 4;
+		++attributeIndex;
+	}
+
+	// normal
+	if ((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL)
+	{
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL) * VK_FORMAT_R32G32B32_SFLOAT);
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL) * sizeof(float) * 3;
+		++attributeIndex;
+	}
+
+	// tangent
+	if ((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT)
+	{
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * VK_FORMAT_R32G32B32_SFLOAT);
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * sizeof(float) * 3;
+		++attributeIndex;
+
+		// bitangent
+		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
+		vertexInputAttributeDescription[attributeIndex].binding = 0;
+		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
+			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * VK_FORMAT_R32G32B32_SFLOAT);
+		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
+		attributeOffset +=
+			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * sizeof(float) * 3;
+		++attributeIndex;
+	}
+
+	return vertexInputAttributeDescription;
+}

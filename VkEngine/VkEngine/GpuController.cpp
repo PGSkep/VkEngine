@@ -235,25 +235,11 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].binding = 0;
-			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = sizeof(float) * (3 + 2 + 3);
+			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((VkD::VERTEX_DATATYPE)(VkD::VDT_X | VkD::VDT_Y | VkD::VDT_Z | VkD::VDT_UV | VkD::VDT_NORMAL | VkD::VDT_TANGENT_BITANGENT));
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 			pipelineData.vertexInputAttributeDescriptions.resize(1);
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions.resize(3);
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[0].location = 0;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[0].binding = 0;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[0].offset = 0;
-
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[1].location = 1;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[1].binding = 0;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[1].offset = sizeof(float) * 3;
-
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[2].location = 2;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[2].binding = 0;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions[2].offset = sizeof(float) * 5;
+			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((VkD::VERTEX_DATATYPE)(VkD::VDT_X | VkD::VDT_Y | VkD::VDT_Z | VkD::VDT_UV | VkD::VDT_NORMAL | VkD::VDT_TANGENT_BITANGENT));
 
 			pipelineData.pipelineVertexInputStateCreateInfos.resize(1);
 			pipelineData.pipelineVertexInputStateCreateInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -543,7 +529,7 @@ void GpuController::Init(VkS::Device* _device)
 			//| VkD::VDT_SKELETON_1_BONE_PER_VERTEX
 			//| VkD::VDT_SKELETON_BONE_INDEX_SIZE_16
 			| VkD::VDT_NORMAL
-			//| VkD::VDT_TANGENT_BITANGENT
+			| VkD::VDT_TANGENT_BITANGENT
 			, true);
 		indexCount = modelData.indexDataCount;
 
