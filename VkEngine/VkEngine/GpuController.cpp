@@ -235,11 +235,11 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].binding = 0;
-			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((VkD::VERTEX_DATATYPE)(VkD::VDT_X | VkD::VDT_Y | VkD::VDT_Z | VkD::VDT_UV | VkD::VDT_NORMAL | VkD::VDT_TANGENT_BITANGENT));
+			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 			pipelineData.vertexInputAttributeDescriptions.resize(1);
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((VkD::VERTEX_DATATYPE)(VkD::VDT_X | VkD::VDT_Y | VkD::VDT_Z | VkD::VDT_UV | VkD::VDT_NORMAL | VkD::VDT_TANGENT_BITANGENT));
+			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
 
 			pipelineData.pipelineVertexInputStateCreateInfos.resize(1);
 			pipelineData.pipelineVertexInputStateCreateInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -305,7 +305,7 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.pipelineRasterizationStateCreateInfos[0].depthClampEnable = VK_FALSE;
 			pipelineData.pipelineRasterizationStateCreateInfos[0].rasterizerDiscardEnable = VK_FALSE;
 			pipelineData.pipelineRasterizationStateCreateInfos[0].polygonMode = VK_POLYGON_MODE_FILL;
-			pipelineData.pipelineRasterizationStateCreateInfos[0].cullMode = VK_CULL_MODE_NONE;
+			pipelineData.pipelineRasterizationStateCreateInfos[0].cullMode = VK_CULL_MODE_BACK_BIT;
 			pipelineData.pipelineRasterizationStateCreateInfos[0].frontFace = VK_FRONT_FACE_CLOCKWISE;
 			pipelineData.pipelineRasterizationStateCreateInfos[0].depthBiasEnable = VK_FALSE;
 			pipelineData.pipelineRasterizationStateCreateInfos[0].depthBiasConstantFactor = 0.0f;
@@ -518,18 +518,18 @@ void GpuController::Init(VkS::Device* _device)
 
 		Loader::ModelData modelData;
 		modelData.LoadModel("Models/cube.fbx",
-			VkD::VDT_X
-			| VkD::VDT_Y
-			| VkD::VDT_Z
-			| VkD::VDT_UV
+			Loader::VDT_X
+			| Loader::VDT_Y
+			| Loader::VDT_Z
+			| Loader::VDT_UV
 			//| VkD::VDT_R
 			//| VkD::VDT_G
 			//| VkD::VDT_B
 			//| VkD::VDT_A
 			//| VkD::VDT_SKELETON_1_BONE_PER_VERTEX
 			//| VkD::VDT_SKELETON_BONE_INDEX_SIZE_16
-			| VkD::VDT_NORMAL
-			| VkD::VDT_TANGENT_BITANGENT
+			| Loader::VDT_NORMAL
+			| Loader::VDT_TANGENT_BITANGENT
 			, true);
 		indexCount = modelData.indexDataCount;
 
@@ -583,55 +583,155 @@ void GpuController::Init(VkS::Device* _device)
 	// Texture
 	{}
 	{
-		VkU::CreateTextureInfo createTextureInfo;
-		createTextureInfo.vkDevice = device->handle;
-		createTextureInfo.physicalDevice = device->physicalDevice;
+		/*
+		// Staging image
+		{
+			VkU::CreateTextureInfo createTextureInfo;
+			createTextureInfo.vkDevice = device->handle;
+			createTextureInfo.physicalDevice = device->physicalDevice;
+			createTextureInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
+			createTextureInfo.extent3D = { STAGING_IMAGE_WIDTH_CAP, STAGING_IMAGE_HEIGHT_CAP, 1 };
+			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+			createTextureInfo.tiling = VK_IMAGE_TILING_LINEAR;
+			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+			VkA::CreateTexture(stagingTextureR8G8B8A8, createTextureInfo);
+		}
 
-		VkU::FillTextureInfo fillTextureInfo;
-		fillTextureInfo.vkDevice = device->handle;
+		// Font
+		{
+			VkS::ImageData imageData;
+			imageData.data = nullptr;
 
-		VkU::CopyTextureInfo copyTextureInfo;
-		copyTextureInfo.vkDevice = device->handle;
-		copyTextureInfo.setupFence = setupFence;
-		copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
-		copyTextureInfo.setupQueue = graphicsQueue;
+			VkU::LoadImageDataInfo loadImageDataInfo;
+			loadImageDataInfo.fileName = "Textures/font.tga";
+			VkA::LoadImageData(imageData, loadImageDataInfo);
 
-		// Staging
-		createTextureInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
-		createTextureInfo.extent3D = { STAGING_IMAGE_WIDTH_CAP, STAGING_IMAGE_HEIGHT_CAP, 1 };
-		createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-		createTextureInfo.tiling = VK_IMAGE_TILING_LINEAR;
-		createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-		VkA::CreateTexture(stagingTextureR8G8B8A8, createTextureInfo);
+			VkU::CreateTextureInfo createTextureInfo;
+			createTextureInfo.vkDevice = device->handle;
+			createTextureInfo.physicalDevice = device->physicalDevice;
+			createTextureInfo.format = imageData.format;
+			createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
+			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+			createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+			VkA::CreateTexture(texture, createTextureInfo);
 
-		// Texture
-		VkS::ImageData imageData;
-		imageData.data = nullptr;
-		VkU::LoadImageDataInfo loadImageDataInfo;
+			VkU::FillTextureInfo fillTextureInfo;
+			fillTextureInfo.vkDevice = device->handle;
+			fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
+			fillTextureInfo.width = imageData.extent2D.width;
+			fillTextureInfo.height = imageData.extent2D.height;
+			fillTextureInfo.size = imageData.size;
+			fillTextureInfo.data = imageData.data;
+			VkA::FillTexture(fillTextureInfo);
+			delete[] imageData.data;
 
-		loadImageDataInfo.fileName = "Textures/rocks.tga";
-		VkA::LoadImageData(imageData, loadImageDataInfo);
+			VkU::CopyTextureInfo copyTextureInfo;
+			copyTextureInfo.vkDevice = device->handle;
+			copyTextureInfo.setupFence = setupFence;
+			copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
+			copyTextureInfo.setupQueue = graphicsQueue;
+			copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
+			copyTextureInfo.dstTexture = texture;
+			VkA::CopyTexture(copyTextureInfo);
+		}
 
-		createTextureInfo.format = imageData.format;
-		createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
-		createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-		createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-		VkA::CreateTexture(texture, createTextureInfo);
+		// Diffuse
+		{
+			VkS::ImageData imageData;
+			imageData.data = nullptr;
 
-		fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
-		fillTextureInfo.width = imageData.extent2D.width;
-		fillTextureInfo.height = imageData.extent2D.height;
-		fillTextureInfo.size = imageData.size;
-		fillTextureInfo.data = imageData.data;
-		VkA::FillTexture(fillTextureInfo);
-		delete[] imageData.data;
+			VkU::LoadImageDataInfo loadImageDataInfo;
+			loadImageDataInfo.fileName = "Textures/rocks diffuse.tga";
+			VkA::LoadImageData(imageData, loadImageDataInfo);
 
-		copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
-		copyTextureInfo.dstTexture = texture;
-		VkA::CopyTexture(copyTextureInfo);
+			VkU::CreateTextureInfo createTextureInfo;
+			createTextureInfo.vkDevice = device->handle;
+			createTextureInfo.physicalDevice = device->physicalDevice;
+			createTextureInfo.format = imageData.format;
+			createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
+			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+			createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+			VkA::CreateTexture(texture, createTextureInfo);
+
+			VkU::FillTextureInfo fillTextureInfo;
+			fillTextureInfo.vkDevice = device->handle;
+			fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
+			fillTextureInfo.width = imageData.extent2D.width;
+			fillTextureInfo.height = imageData.extent2D.height;
+			fillTextureInfo.size = imageData.size;
+			fillTextureInfo.data = imageData.data;
+			VkA::FillTexture(fillTextureInfo);
+			delete[] imageData.data;
+
+			VkU::CopyTextureInfo copyTextureInfo;
+			copyTextureInfo.vkDevice = device->handle;
+			copyTextureInfo.setupFence = setupFence;
+			copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
+			copyTextureInfo.setupQueue = graphicsQueue;
+			copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
+			copyTextureInfo.dstTexture = texture;
+			VkA::CopyTexture(copyTextureInfo);
+		}
+
+		// Normal
+		{
+			VkS::ImageData imageData;
+			imageData.data = nullptr;
+
+			VkU::LoadImageDataInfo loadImageDataInfo;
+			loadImageDataInfo.fileName = "Textures/rocks normal.tga";
+			VkA::LoadImageData(imageData, loadImageDataInfo);
+
+			VkU::CreateTextureInfo createTextureInfo;
+			createTextureInfo.vkDevice = device->handle;
+			createTextureInfo.physicalDevice = device->physicalDevice;
+			createTextureInfo.format = imageData.format;
+			createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
+			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+			createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+			VkA::CreateTexture(texture, createTextureInfo);
+
+			VkU::FillTextureInfo fillTextureInfo;
+			fillTextureInfo.vkDevice = device->handle;
+			fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
+			fillTextureInfo.width = imageData.extent2D.width;
+			fillTextureInfo.height = imageData.extent2D.height;
+			fillTextureInfo.size = imageData.size;
+			fillTextureInfo.data = imageData.data;
+			VkA::FillTexture(fillTextureInfo);
+			delete[] imageData.data;
+
+			VkU::CopyTextureInfo copyTextureInfo;
+			copyTextureInfo.vkDevice = device->handle;
+			copyTextureInfo.setupFence = setupFence;
+			copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
+			copyTextureInfo.setupQueue = graphicsQueue;
+			copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
+			copyTextureInfo.dstTexture = texture;
+			VkA::CopyTexture(copyTextureInfo);
+		}
+		//*/
+
+		// Font
+		Loader::TextureData textureData;
+		textureData.LoadTGA("Textures/font.tga");
+
+		VkU::CreateTextureInfo2 createTextureInfo2;
+		createTextureInfo2.textureData = &textureData;
+		createTextureInfo2.vkDevice = device->handle;
+		createTextureInfo2.physicalDevice = device->physicalDevice;
+		createTextureInfo2.setupFence = setupFence;
+		createTextureInfo2.setupCommandBuffer = graphicsCommandBuffer;
+		createTextureInfo2.setupQueue = graphicsQueue;
+
+		VkA::CreateTexture2(texture, createTextureInfo2);
 	}
 
 	// Sampler
@@ -854,6 +954,11 @@ void GpuController::Run()
 
 		viewProjectionData[0] = scene.view;
 	}
+
+	Math3D2::Vec3 cameraPosition = Math3D2::Mat4::ExtractPosition(viewProjectionData[0]);
+
+	//system("cls");
+	//std::cout << "\nX = " << cameraPosition.x << "\nY = " << cameraPosition.y << "\nZ = " << cameraPosition.z;
 
 	// Update model
 	{

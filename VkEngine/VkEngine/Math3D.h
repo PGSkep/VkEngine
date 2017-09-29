@@ -284,6 +284,11 @@ namespace Math3D2
 
 			return mat;
 		}
+
+		static Vec3 ExtractPosition(Mat4 _source)
+		{
+			return { _source.wx, _source.wy, _source.wz };
+		}
 	};
 }
 

@@ -7,6 +7,7 @@
 #define VK_FLAGS_NONE 0
 
 #include "Math3D.h"
+#include "Loader.h"
 
 //#define GLM_FORCE_RADIANS
 //#define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -207,35 +208,8 @@ namespace VkS
 
 namespace VkD
 {
-	enum VERTEX_DATATYPE
-	{
-		// (VDT_X | VDT_Y) is valid, (VDT_Y | VDT_Z) is not, same follows for RGBA and NTB
-		VDT_NONE						= 0x0000,
-
-		VDT_X							= 0x0001,
-		VDT_Y							= 0x0002,
-		VDT_Z							= 0x0004,
-		VDT_UV							= 0x0008,
-
-		VDT_R							= 0x0010,
-		VDT_G							= 0x0020,
-		VDT_B							= 0x0040,
-		VDT_A							= 0x0080,
-
-		VDT_SKELETON_4_BONE_PER_VERTEX	= 0x0100,
-		VDT_SKELETON_BONE_INDEX_SIZE_8	= 0x0200,
-		VDT_SKELETON_BONE_INDEX_SIZE_16	= 0x0400,
-
-		//0x0800
-
-		VDT_NORMAL						= 0x1000,
-		VDT_TANGENT_BITANGENT			= 0x2000,
-
-		VDT_MAX							= 0x80000000
-	};
-
-	uint32_t GetVertexStride(VERTEX_DATATYPE _vertexDatatype);
-	std::vector<VkVertexInputAttributeDescription> GetVertexInputAttributeDescriptions(VERTEX_DATATYPE _vertexDatatype);
+	uint32_t GetVertexStride(Loader::VERTEX_DATATYPE _vertexDatatype);
+	std::vector<VkVertexInputAttributeDescription> GetVertexInputAttributeDescriptions(Loader::VERTEX_DATATYPE _vertexDatatype);
 }
 
 namespace VkU
@@ -396,6 +370,16 @@ namespace VkU
 	{
 		const char* fileName;
 	};
+	struct CreateTextureInfo2
+	{
+		Loader::TextureData*			textureData;
+
+		VkDevice						vkDevice;
+		VkS::Instance::PhysicalDevice*	physicalDevice;
+		VkFence							setupFence;
+		VkCommandBuffer					setupCommandBuffer;
+		VkQueue							setupQueue;
+	};
 	struct CreateTextureInfo
 	{
 		VkDevice vkDevice;
@@ -527,6 +511,7 @@ namespace VkA
 	void CopyBuffers(VkU::CopyBuffersInfo _copyBuffersInfo);
 
 	VkS::VKU_RESULT LoadImageData(VkS::ImageData& _imageData, VkU::LoadImageDataInfo _loadImageDataInfo);
+	VkS::VKU_RESULT CreateTexture2(VkS::Texture& _texture, VkU::CreateTextureInfo2 _createTextureInfo2);
 	VkS::VKU_RESULT CreateTexture(VkS::Texture& _texture, VkU::CreateTextureInfo _createTextureInfo);
 	VkS::VKU_RESULT FillTexture(VkU::FillTextureInfo _fillTextureInfo);
 	VkS::VKU_RESULT CopyTexture(VkU::CopyTextureInfo _copyTextureInfo);

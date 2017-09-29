@@ -1296,6 +1296,341 @@ VkS::VKU_RESULT VkA::LoadImageData(VkS::ImageData& _imageData, VkU::LoadImageDat
 
 	return VkS::VKU_SUCCESS;
 }
+VkS::VKU_RESULT VkA::CreateTexture2(VkS::Texture& _texture, VkU::CreateTextureInfo2 _createTextureInfo2)
+{
+	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
+
+	// create
+	{
+		_texture.extent.width = _createTextureInfo2.textureData->extent2D.width;
+		_texture.extent.height = _createTextureInfo2.textureData->extent2D.height;
+
+		VkImageCreateInfo imageCreateInfo;
+		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageCreateInfo.pNext = nullptr;
+		imageCreateInfo.flags = 0;
+		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageCreateInfo.format = _createTextureInfo2.textureData->format;
+		imageCreateInfo.extent = { _createTextureInfo2.textureData->extent2D.width, _createTextureInfo2.textureData->extent2D.height, 1 };
+		imageCreateInfo.mipLevels = 1;
+		imageCreateInfo.arrayLayers = 1;
+		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		imageCreateInfo.queueFamilyIndexCount = 0;
+		imageCreateInfo.pQueueFamilyIndices = nullptr;
+		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+		VkU::vkApiResult = vkCreateImage(_createTextureInfo2.vkDevice, &imageCreateInfo, nullptr, &_texture.handle);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkMemoryRequirements memoryRequirements;
+		vkGetImageMemoryRequirements(_createTextureInfo2.vkDevice, _texture.handle, &memoryRequirements);
+
+		VkMemoryAllocateInfo memoryAllocateInfo;
+		memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		memoryAllocateInfo.pNext = nullptr;
+		memoryAllocateInfo.allocationSize = memoryRequirements.size;
+		memoryAllocateInfo.memoryTypeIndex = VkA::FindMemoryTypeIndex(_createTextureInfo2.physicalDevice, memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		VkU::vkApiResult = vkAllocateMemory(_createTextureInfo2.vkDevice, &memoryAllocateInfo, nullptr, &_texture.memory);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_TOO_MANY_OBJECTS:		return VkS::VKU_TOO_MANY_OBJECTS;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkU::vkApiResult = vkBindImageMemory(_createTextureInfo2.vkDevice, _texture.handle, _texture.memory, 0);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkImageViewCreateInfo imageViewCreateInfo;
+		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		imageViewCreateInfo.pNext = nullptr;
+		imageViewCreateInfo.flags = VK_RESERVED_FOR_FUTURE_USE;
+		imageViewCreateInfo.image = _texture.handle;
+		imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		imageViewCreateInfo.format = _createTextureInfo2.textureData->format;
+		imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+		imageViewCreateInfo.subresourceRange.layerCount = 1;
+		imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+		imageViewCreateInfo.subresourceRange.levelCount = 1;
+
+		VkU::vkApiResult = vkCreateImageView(_createTextureInfo2.vkDevice, &imageViewCreateInfo, nullptr, &_texture.view);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+	}
+
+	VkImage stagingTextureHandle;
+	VkDeviceMemory stagingTextureMemory;
+	// create staging
+	{
+		VkImageCreateInfo stagingImageCreateInfo;
+		stagingImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		stagingImageCreateInfo.pNext = nullptr;
+		stagingImageCreateInfo.flags = 0;
+		stagingImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+		stagingImageCreateInfo.format = _createTextureInfo2.textureData->format;
+		stagingImageCreateInfo.extent = { _createTextureInfo2.textureData->extent2D.width, _createTextureInfo2.textureData->extent2D.height, 1 };
+		stagingImageCreateInfo.mipLevels = 1;
+		stagingImageCreateInfo.arrayLayers = 1;
+		stagingImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		stagingImageCreateInfo.tiling = VK_IMAGE_TILING_LINEAR;
+		stagingImageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		stagingImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		stagingImageCreateInfo.queueFamilyIndexCount = 0;
+		stagingImageCreateInfo.pQueueFamilyIndices = nullptr;
+		stagingImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+		VkU::vkApiResult = vkCreateImage(_createTextureInfo2.vkDevice, &stagingImageCreateInfo, nullptr, &stagingTextureHandle);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkMemoryRequirements memoryRequirements;
+		vkGetImageMemoryRequirements(_createTextureInfo2.vkDevice, stagingTextureHandle, &memoryRequirements);
+
+		VkMemoryAllocateInfo memoryAllocateInfo;
+		memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		memoryAllocateInfo.pNext = nullptr;
+		memoryAllocateInfo.allocationSize = memoryRequirements.size;
+		memoryAllocateInfo.memoryTypeIndex = VkA::FindMemoryTypeIndex(_createTextureInfo2.physicalDevice, memoryRequirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		VkU::vkApiResult = vkAllocateMemory(_createTextureInfo2.vkDevice, &memoryAllocateInfo, nullptr, &stagingTextureMemory);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_TOO_MANY_OBJECTS:		return VkS::VKU_TOO_MANY_OBJECTS;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkU::vkApiResult = vkBindImageMemory(_createTextureInfo2.vkDevice, stagingTextureHandle, stagingTextureMemory, 0);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+	}
+
+	// fill staging
+	{
+		VkImageSubresource imageSubresource;
+		imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageSubresource.mipLevel = 0;
+		imageSubresource.arrayLayer = 0;
+
+		VkSubresourceLayout subresourceLayout;
+		vkGetImageSubresourceLayout(_createTextureInfo2.vkDevice, stagingTextureHandle, &imageSubresource, &subresourceLayout);
+
+		void* mappedData;
+		VkU::vkApiResult = vkMapMemory(_createTextureInfo2.vkDevice, stagingTextureMemory, 0, _createTextureInfo2.textureData->size, 0, &mappedData);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_MEMORY_MAP_FAILED:	return VkS::VKU_MEMORY_MAP_FAILED;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		if (subresourceLayout.rowPitch == _createTextureInfo2.textureData->extent2D.width * 4)
+			memcpy(mappedData, _createTextureInfo2.textureData->data, _createTextureInfo2.textureData->size);
+		else
+		{
+			uint8_t* _data8b = (uint8_t*)_createTextureInfo2.textureData->data;
+			uint8_t* data8b = (uint8_t*)mappedData;
+
+			for (uint32_t y = 0; y < _createTextureInfo2.textureData->extent2D.height; y++)
+				memcpy(&data8b[y * subresourceLayout.rowPitch], &_data8b[y * _createTextureInfo2.textureData->extent2D.width * 4], _createTextureInfo2.textureData->extent2D.width * 4);
+		}
+
+		vkUnmapMemory(_createTextureInfo2.vkDevice, stagingTextureMemory);
+	}
+
+	// transfer
+	{
+		VkU::vkApiResult = vkWaitForFences(_createTextureInfo2.vkDevice, 1, &_createTextureInfo2.setupFence, VK_TRUE, -1);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_TIMEOUT:					return VkS::VKU_TIMEOUT;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+		VkU::vkApiResult = vkResetFences(_createTextureInfo2.vkDevice, 1, &_createTextureInfo2.setupFence);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkCommandBufferBeginInfo commandBufferBeginInfo;
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.pNext = nullptr;
+		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+		VkU::vkApiResult = vkBeginCommandBuffer(_createTextureInfo2.setupCommandBuffer, &commandBufferBeginInfo);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkImageMemoryBarrier sourceImageMemoryBarrier;
+		sourceImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		sourceImageMemoryBarrier.pNext = nullptr;
+		sourceImageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		sourceImageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		sourceImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+		sourceImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		sourceImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		sourceImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		sourceImageMemoryBarrier.image = stagingTextureHandle;
+		sourceImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		sourceImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+		sourceImageMemoryBarrier.subresourceRange.levelCount = 1;
+		sourceImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		sourceImageMemoryBarrier.subresourceRange.layerCount = 1;
+		vkCmdPipelineBarrier(_createTextureInfo2.setupCommandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &sourceImageMemoryBarrier);
+
+		VkImageMemoryBarrier dstImageMemoryBarrier;
+		dstImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		dstImageMemoryBarrier.pNext = nullptr;
+		dstImageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		dstImageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		dstImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+		dstImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		dstImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		dstImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		dstImageMemoryBarrier.image = _texture.handle;
+		dstImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		dstImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+		dstImageMemoryBarrier.subresourceRange.levelCount = 1;
+		dstImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		dstImageMemoryBarrier.subresourceRange.layerCount = 1;
+		vkCmdPipelineBarrier(_createTextureInfo2.setupCommandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &dstImageMemoryBarrier);
+
+		VkImageSubresourceLayers imageSubresourceLayers;
+		imageSubresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageSubresourceLayers.mipLevel = 0;
+		imageSubresourceLayers.baseArrayLayer = 0;
+		imageSubresourceLayers.layerCount = 1;
+
+		VkImageCopy imageCopy;
+		imageCopy.srcSubresource = imageSubresourceLayers;
+		imageCopy.srcOffset.x = 0;
+		imageCopy.srcOffset.y = 0;
+		imageCopy.srcOffset.z = 0;
+		imageCopy.dstSubresource = imageSubresourceLayers;
+		imageCopy.dstOffset.x = 0;
+		imageCopy.dstOffset.y = 0;
+		imageCopy.dstOffset.z = 0;
+		imageCopy.extent.width = _texture.extent.width;
+		imageCopy.extent.height = _texture.extent.height;
+		imageCopy.extent.depth = 1;
+
+		vkCmdCopyImage(_createTextureInfo2.setupCommandBuffer, stagingTextureHandle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, _texture.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+
+		VkImageMemoryBarrier finalMemoryBarrier;
+		finalMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		finalMemoryBarrier.pNext = nullptr;
+		finalMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		finalMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		finalMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		finalMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		finalMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		finalMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		finalMemoryBarrier.image = _texture.handle;
+		finalMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		finalMemoryBarrier.subresourceRange.baseMipLevel = 0;
+		finalMemoryBarrier.subresourceRange.levelCount = 1;
+		finalMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		finalMemoryBarrier.subresourceRange.layerCount = 1;
+		vkCmdPipelineBarrier(_createTextureInfo2.setupCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &finalMemoryBarrier);
+
+		VkU::vkApiResult = vkEndCommandBuffer(_createTextureInfo2.setupCommandBuffer);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = nullptr;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &_createTextureInfo2.setupCommandBuffer;
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
+		VkU::vkApiResult = vkQueueSubmit(_createTextureInfo2.setupQueue, 1, &submitInfo, _createTextureInfo2.setupFence);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+
+		// Wait for textures to be transfered
+		VkU::vkApiResult = vkQueueWaitIdle(_createTextureInfo2.setupQueue);
+		switch (VkU::vkApiResult)
+		{
+		case VK_SUCCESS:					break;
+		case VK_ERROR_OUT_OF_HOST_MEMORY:	return VkS::VKU_NO_HOST_MEMORY;
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return VkS::VKU_NO_DEVICE_MEMORY;
+		case VK_ERROR_DEVICE_LOST:			return VkS::VKU_DEVICE_LOST;
+		default:							vkuResult = VkS::VKU_UNKNOWN; break;
+		}
+	}
+
+	vkDestroyImage(_createTextureInfo2.vkDevice, stagingTextureHandle, nullptr);
+	vkFreeMemory(_createTextureInfo2.vkDevice, stagingTextureMemory, nullptr);
+
+	return vkuResult;
+}
 VkS::VKU_RESULT VkA::CreateTexture(VkS::Texture & _texture, VkU::CreateTextureInfo _createTextureInfo)
 {
 	VkS::VKU_RESULT vkuResult = VkS::VKU_SUCCESS;
@@ -1465,7 +1800,7 @@ VkS::VKU_RESULT VkA::CopyTexture(VkU::CopyTextureInfo _copyTextureInfo)
 	sourceImageMemoryBarrier.pNext = nullptr;
 	sourceImageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 	sourceImageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	sourceImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+	sourceImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 	sourceImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	sourceImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	sourceImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1532,6 +1867,23 @@ VkS::VKU_RESULT VkA::CopyTexture(VkU::CopyTextureInfo _copyTextureInfo)
 	finalMemoryBarrier.subresourceRange.layerCount = 1;
 	vkCmdPipelineBarrier(_copyTextureInfo.setupCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &finalMemoryBarrier);
 
+	VkImageMemoryBarrier sourceResetImageMemoryBarrier;
+	sourceResetImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	sourceResetImageMemoryBarrier.pNext = nullptr;
+	sourceResetImageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	sourceResetImageMemoryBarrier.dstAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+	sourceResetImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	sourceResetImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	sourceResetImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	sourceResetImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	sourceResetImageMemoryBarrier.image = _copyTextureInfo.srcTexture.handle;
+	sourceResetImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	sourceResetImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	sourceResetImageMemoryBarrier.subresourceRange.levelCount = 1;
+	sourceResetImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	sourceResetImageMemoryBarrier.subresourceRange.layerCount = 1;
+	vkCmdPipelineBarrier(_copyTextureInfo.setupCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 0, nullptr, 1, &sourceResetImageMemoryBarrier);
+
 	VkU::vkApiResult = vkEndCommandBuffer(_copyTextureInfo.setupCommandBuffer);
 	switch (VkU::vkApiResult)
 	{
@@ -1575,34 +1927,34 @@ VkS::VKU_RESULT VkA::CopyTexture(VkU::CopyTextureInfo _copyTextureInfo)
 	return vkuResult;
 }
 
-uint32_t VkD::GetVertexStride(VERTEX_DATATYPE _vertexDatatype)
+uint32_t VkD::GetVertexStride(Loader::VERTEX_DATATYPE _vertexDatatype)
 {
 	uint32_t stride = 0;
 
 	char indexSize = 0;
 
-	if ((_vertexDatatype & VDT_X) == VDT_X)
+	if ((_vertexDatatype & Loader::VDT_X) == Loader::VDT_X)
 		stride += sizeof(float);
-	if ((_vertexDatatype & VDT_Y) == VDT_Y)
+	if ((_vertexDatatype & Loader::VDT_Y) == Loader::VDT_Y)
 		stride += sizeof(float);
-	if ((_vertexDatatype & VDT_Z) == VDT_Z)
+	if ((_vertexDatatype & Loader::VDT_Z) == Loader::VDT_Z)
 		stride += sizeof(float);
 
-	if ((_vertexDatatype & VDT_UV) == VDT_UV)
+	if ((_vertexDatatype & Loader::VDT_UV) == Loader::VDT_UV)
 		stride += sizeof(float) * 2;
 
-	if ((_vertexDatatype & VDT_R) == VDT_R)
+	if ((_vertexDatatype & Loader::VDT_R) == Loader::VDT_R)
 		stride += sizeof(float);
-	if ((_vertexDatatype & VDT_G) == VDT_G)
+	if ((_vertexDatatype & Loader::VDT_G) == Loader::VDT_G)
 		stride += sizeof(float);
-	if ((_vertexDatatype & VDT_B) == VDT_B)
+	if ((_vertexDatatype & Loader::VDT_B) == Loader::VDT_B)
 		stride += sizeof(float);
-	if ((_vertexDatatype & VDT_A) == VDT_A)
+	if ((_vertexDatatype & Loader::VDT_A) == Loader::VDT_A)
 		stride += sizeof(float);
 
-	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8)
+	if ((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_8) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_8)
 		indexSize = sizeof(uint8_t);
-	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16)
+	if ((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_16) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_16)
 	{
 		if (indexSize > 0)
 			return 0;
@@ -1610,46 +1962,46 @@ uint32_t VkD::GetVertexStride(VERTEX_DATATYPE _vertexDatatype)
 		indexSize = sizeof(uint16_t);
 	}
 
-	if ((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX)
+	if ((_vertexDatatype & Loader::VDT_SKELETON_4_BONE_PER_VERTEX) == Loader::VDT_SKELETON_4_BONE_PER_VERTEX)
 		stride += (sizeof(float) + indexSize) * 4;
 
-	if ((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL)
+	if ((_vertexDatatype & Loader::VDT_NORMAL) == Loader::VDT_NORMAL)
 		stride += sizeof(float) * 3;
-	if ((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT)
+	if ((_vertexDatatype & Loader::VDT_TANGENT_BITANGENT) == Loader::VDT_TANGENT_BITANGENT)
 		stride += sizeof(float) * 6;
 
 	return stride;
 }
-std::vector<VkVertexInputAttributeDescription> VkD::GetVertexInputAttributeDescriptions(VERTEX_DATATYPE _vertexDatatype)
+std::vector<VkVertexInputAttributeDescription> VkD::GetVertexInputAttributeDescriptions(Loader::VERTEX_DATATYPE _vertexDatatype)
 {
 	uint32_t attributeCount = 0;
 	uint32_t attributeIndex = 0;
 	uint32_t attributeOffset = 0;
 
-	if ((_vertexDatatype & VDT_X) == VDT_X)
+	if ((_vertexDatatype & Loader::VDT_X) == Loader::VDT_X)
 		++attributeCount;
 
-	if ((_vertexDatatype & VDT_UV) == VDT_UV)
+	if ((_vertexDatatype & Loader::VDT_UV) == Loader::VDT_UV)
 		++attributeCount;
 
-	if ((_vertexDatatype & VDT_R) == VDT_R)
+	if ((_vertexDatatype & Loader::VDT_R) == Loader::VDT_R)
 		++attributeCount;
 
-	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8)
+	if ((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_8) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_8)
 		++++attributeCount;
-	else if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16)
+	else if ((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_16) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_16)
 		++++attributeCount;
 
-	if ((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL)
+	if ((_vertexDatatype & Loader::VDT_NORMAL) == Loader::VDT_NORMAL)
 		++attributeCount;
-	if ((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT)
+	if ((_vertexDatatype & Loader::VDT_TANGENT_BITANGENT) == Loader::VDT_TANGENT_BITANGENT)
 		++++attributeCount;
 
 	char indexSize = 0;
 
-	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8)
+	if ((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_8) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_8)
 		indexSize = sizeof(uint8_t);
-	if ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16)
+	if ((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_16) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_16)
 	{
 		if (indexSize > 0)
 			return {};
@@ -1660,56 +2012,56 @@ std::vector<VkVertexInputAttributeDescription> VkD::GetVertexInputAttributeDescr
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescription(attributeCount);
 
 	// position
-	if ((_vertexDatatype & VDT_X) == VDT_X && (_vertexDatatype & VDT_Y) == VDT_Y && (_vertexDatatype & VDT_Z) == VDT_Z)
+	if ((_vertexDatatype & Loader::VDT_X) == Loader::VDT_X && (_vertexDatatype & Loader::VDT_Y) == Loader::VDT_Y && (_vertexDatatype & Loader::VDT_Z) == Loader::VDT_Z)
 	{
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
 		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
-			((_vertexDatatype & VDT_X) == VDT_X) * VK_FORMAT_R32_SFLOAT +
-			((_vertexDatatype & VDT_Y) == VDT_Y) * (VK_FORMAT_R32G32_SFLOAT - VK_FORMAT_R32_SFLOAT) +
-			((_vertexDatatype & VDT_Z) == VDT_Z) * (VK_FORMAT_R32G32B32_SFLOAT - VK_FORMAT_R32G32_SFLOAT));
+			((_vertexDatatype & Loader::VDT_X) == Loader::VDT_X) * VK_FORMAT_R32_SFLOAT +
+			((_vertexDatatype & Loader::VDT_Y) == Loader::VDT_Y) * (VK_FORMAT_R32G32_SFLOAT - VK_FORMAT_R32_SFLOAT) +
+			((_vertexDatatype & Loader::VDT_Z) == Loader::VDT_Z) * (VK_FORMAT_R32G32B32_SFLOAT - VK_FORMAT_R32G32_SFLOAT));
 		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
 		attributeOffset +=
-			((_vertexDatatype & VDT_X) == VDT_X) * sizeof(float) +
-			((_vertexDatatype & VDT_Y) == VDT_Y) * sizeof(float) +
-			((_vertexDatatype & VDT_Z) == VDT_Z) * sizeof(float);
+			((_vertexDatatype & Loader::VDT_X) == Loader::VDT_X) * sizeof(float) +
+			((_vertexDatatype & Loader::VDT_Y) == Loader::VDT_Y) * sizeof(float) +
+			((_vertexDatatype & Loader::VDT_Z) == Loader::VDT_Z) * sizeof(float);
 		++attributeIndex;
 	}
 
 	// uv
-	if ((_vertexDatatype & VDT_UV) == VDT_UV)
+	if ((_vertexDatatype & Loader::VDT_UV) == Loader::VDT_UV)
 	{
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
 		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
-			((_vertexDatatype & VDT_UV) == VDT_UV) * VK_FORMAT_R32G32_SFLOAT);
+			((_vertexDatatype & Loader::VDT_UV) == Loader::VDT_UV) * VK_FORMAT_R32G32_SFLOAT);
 		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
 		attributeOffset +=
-			((_vertexDatatype & VDT_UV) == VDT_UV) * sizeof(float) * 2;
+			((_vertexDatatype & Loader::VDT_UV) == Loader::VDT_UV) * sizeof(float) * 2;
 		++attributeIndex;
 	}
 
 	// color
-	if ((_vertexDatatype & VDT_R) == VDT_R && (_vertexDatatype & VDT_G) == VDT_G && (_vertexDatatype & VDT_B) == VDT_B && (_vertexDatatype & VDT_A) == VDT_A)
+	if ((_vertexDatatype & Loader::VDT_R) == Loader::VDT_R && (_vertexDatatype & Loader::VDT_G) == Loader::VDT_G && (_vertexDatatype & Loader::VDT_B) == Loader::VDT_B && (_vertexDatatype & Loader::VDT_A) == Loader::VDT_A)
 	{
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
 		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
-			((_vertexDatatype & VDT_R) == VDT_R) * VK_FORMAT_R32_SFLOAT +
-			((_vertexDatatype & VDT_G) == VDT_G) * (VK_FORMAT_R32G32_SFLOAT - VK_FORMAT_R32_SFLOAT) +
-			((_vertexDatatype & VDT_B) == VDT_B) * (VK_FORMAT_R32G32B32_SFLOAT - VK_FORMAT_R32G32_SFLOAT) +
-			((_vertexDatatype & VDT_A) == VDT_A) * (VK_FORMAT_R32G32B32A32_SFLOAT - VK_FORMAT_R32G32B32_SFLOAT));
+			((_vertexDatatype & Loader::VDT_R) == Loader::VDT_R) * VK_FORMAT_R32_SFLOAT +
+			((_vertexDatatype & Loader::VDT_G) == Loader::VDT_G) * (VK_FORMAT_R32G32_SFLOAT - VK_FORMAT_R32_SFLOAT) +
+			((_vertexDatatype & Loader::VDT_B) == Loader::VDT_B) * (VK_FORMAT_R32G32B32_SFLOAT - VK_FORMAT_R32G32_SFLOAT) +
+			((_vertexDatatype & Loader::VDT_A) == Loader::VDT_A) * (VK_FORMAT_R32G32B32A32_SFLOAT - VK_FORMAT_R32G32B32_SFLOAT));
 		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
 		attributeOffset +=
-			((_vertexDatatype & VDT_R) == VDT_R) * sizeof(float) +
-			((_vertexDatatype & VDT_G) == VDT_G) * sizeof(float) +
-			((_vertexDatatype & VDT_B) == VDT_B) * sizeof(float) +
-			((_vertexDatatype & VDT_A) == VDT_A) * sizeof(float);
+			((_vertexDatatype & Loader::VDT_R) == Loader::VDT_R) * sizeof(float) +
+			((_vertexDatatype & Loader::VDT_G) == Loader::VDT_G) * sizeof(float) +
+			((_vertexDatatype & Loader::VDT_B) == Loader::VDT_B) * sizeof(float) +
+			((_vertexDatatype & Loader::VDT_A) == Loader::VDT_A) * sizeof(float);
 		++attributeIndex;
 	}
 
 	// bone indices
-	if (((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_8) == VDT_SKELETON_BONE_INDEX_SIZE_8) ^ ((_vertexDatatype & VDT_SKELETON_BONE_INDEX_SIZE_16) == VDT_SKELETON_BONE_INDEX_SIZE_16))
+	if (((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_8) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_8) ^ ((_vertexDatatype & Loader::VDT_SKELETON_BONE_INDEX_SIZE_16) == Loader::VDT_SKELETON_BONE_INDEX_SIZE_16))
 	{
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
@@ -1724,51 +2076,51 @@ std::vector<VkVertexInputAttributeDescription> VkD::GetVertexInputAttributeDescr
 	}
 
 	// bone weights
-	if ((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX)
+	if ((_vertexDatatype & Loader::VDT_SKELETON_4_BONE_PER_VERTEX) == Loader::VDT_SKELETON_4_BONE_PER_VERTEX)
 	{
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
 		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
-			((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX) * VK_FORMAT_R32G32B32A32_SFLOAT);
+			((_vertexDatatype & Loader::VDT_SKELETON_4_BONE_PER_VERTEX) == Loader::VDT_SKELETON_4_BONE_PER_VERTEX) * VK_FORMAT_R32G32B32A32_SFLOAT);
 		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
 		attributeOffset +=
-			((_vertexDatatype & VDT_SKELETON_4_BONE_PER_VERTEX) == VDT_SKELETON_4_BONE_PER_VERTEX) * sizeof(float) * 4;
+			((_vertexDatatype & Loader::VDT_SKELETON_4_BONE_PER_VERTEX) == Loader::VDT_SKELETON_4_BONE_PER_VERTEX) * sizeof(float) * 4;
 		++attributeIndex;
 	}
 
 	// normal
-	if ((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL)
+	if ((_vertexDatatype & Loader::VDT_NORMAL) == Loader::VDT_NORMAL)
 	{
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
 		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
-			((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL) * VK_FORMAT_R32G32B32_SFLOAT);
+			((_vertexDatatype & Loader::VDT_NORMAL) == Loader::VDT_NORMAL) * VK_FORMAT_R32G32B32_SFLOAT);
 		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
 		attributeOffset +=
-			((_vertexDatatype & VDT_NORMAL) == VDT_NORMAL) * sizeof(float) * 3;
+			((_vertexDatatype & Loader::VDT_NORMAL) == Loader::VDT_NORMAL) * sizeof(float) * 3;
 		++attributeIndex;
 	}
 
 	// tangent
-	if ((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT)
+	if ((_vertexDatatype & Loader::VDT_TANGENT_BITANGENT) == Loader::VDT_TANGENT_BITANGENT)
 	{
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
 		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
-			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * VK_FORMAT_R32G32B32_SFLOAT);
+			((_vertexDatatype & Loader::VDT_TANGENT_BITANGENT) == Loader::VDT_TANGENT_BITANGENT) * VK_FORMAT_R32G32B32_SFLOAT);
 		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
 		attributeOffset +=
-			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * sizeof(float) * 3;
+			((_vertexDatatype & Loader::VDT_TANGENT_BITANGENT) == Loader::VDT_TANGENT_BITANGENT) * sizeof(float) * 3;
 		++attributeIndex;
 
 		// bitangent
 		vertexInputAttributeDescription[attributeIndex].location = attributeIndex;
 		vertexInputAttributeDescription[attributeIndex].binding = 0;
 		vertexInputAttributeDescription[attributeIndex].format = (VkFormat)(
-			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * VK_FORMAT_R32G32B32_SFLOAT);
+			((_vertexDatatype & Loader::VDT_TANGENT_BITANGENT) == Loader::VDT_TANGENT_BITANGENT) * VK_FORMAT_R32G32B32_SFLOAT);
 		vertexInputAttributeDescription[attributeIndex].offset = attributeOffset;
 		attributeOffset +=
-			((_vertexDatatype & VDT_TANGENT_BITANGENT) == VDT_TANGENT_BITANGENT) * sizeof(float) * 3;
+			((_vertexDatatype & Loader::VDT_TANGENT_BITANGENT) == Loader::VDT_TANGENT_BITANGENT) * sizeof(float) * 3;
 		++attributeIndex;
 	}
 
