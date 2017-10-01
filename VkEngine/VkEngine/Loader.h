@@ -363,14 +363,15 @@ namespace Loader
 					}
 				}
 
-				float b[] = { 1.0f, 2.0f, 3.0f };
 				// normal, tangent, bitangent
 				if ((vertexDataType & VDT_NORMAL) == VDT_NORMAL)
 				{
 					if ((missingVertexTypes & VDT_NORMAL) == VDT_NORMAL)
 						memset((void*)dataPos, 0, sizeof(float) * 3);
 					else
-						memcpy((void*)dataPos, b, sizeof(float) * 3);
+						//&pScene->mMeshes[0]->mVertices[iVertex].x
+						&pScene->mMeshes[0]->mNormals[iVertex].x;
+						memcpy((void*)dataPos, &pScene->mMeshes[0]->mNormals[iVertex].x, sizeof(float) * 3);
 
 					dataPos += sizeof(float) * 3;
 				}
@@ -383,9 +384,9 @@ namespace Loader
 					}
 					else
 					{
-						memcpy((void*)dataPos, b, sizeof(float) * 3);
+						memcpy((void*)dataPos, &pScene->mMeshes[0]->mTangents[iVertex].x, sizeof(float) * 3);
 						dataPos += sizeof(float) * 3;
-						memcpy((void*)dataPos, b, sizeof(float) * 3);
+						memcpy((void*)dataPos, &pScene->mMeshes[0]->mBitangents[iVertex].x, sizeof(float) * 3);
 						dataPos += sizeof(float) * 3;
 					}
 				}

@@ -33,7 +33,7 @@ class GpuController
 	VkRenderPass renderPass;
 
 	VkDescriptorSetLayout mvpDescriptorSetLayout;
-	VkDescriptorSetLayout diffuseDescriptorSetLayout;
+	VkDescriptorSetLayout diffuseNormalDescriptorSetLayout;
 
 	VkPipelineLayout mvpPush4Vert4FragPipelineLayout;
 
@@ -54,16 +54,17 @@ class GpuController
 	VkS::Buffer modelMatricesBuffer;
 	VkS::Buffer vertexBuffer;
 	VkS::Buffer indexBuffer;
-	
-	VkS::Texture stagingTextureR8G8B8A8;
-	VkS::Texture texture;
+
+	VkS::Texture fontTexture;
+	VkS::Texture rocksDiffuseTexture;
+	VkS::Texture rocksNormalTexture;
 	
 	VkSampler sampler;
 	
 	VkDescriptorPool descriptorPool;
 	
 	VkDescriptorSet mvpDescriptorSet;
-	VkDescriptorSet diffuseDescriptorSet;
+	VkDescriptorSet diffuseNormalDescriptorSet;
 
 public:
 	void Init(VkS::Device* _device);

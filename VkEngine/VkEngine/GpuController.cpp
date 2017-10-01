@@ -4,9 +4,9 @@
 #define MODEL_MATRICES_UNIFORM_BINDING 1
 
 #define DIFFUSE_COMBINED_IMAGE_SAMPLER_BINDING 0
+#define NORMAL_COMBINED_IMAGE_SAMPLER_BINDING 1
 
-#define STAGING_IMAGE_WIDTH_CAP 4096
-#define STAGING_IMAGE_HEIGHT_CAP 4096
+#define STAGING_BUFFER_SIZE 110208
 
 void GpuController::Init(VkS::Device* _device)
 {
@@ -156,17 +156,23 @@ void GpuController::Init(VkS::Device* _device)
 		VkU::vkApiResult = vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, nullptr, &mvpDescriptorSetLayout);
 
 		descriptorSetLayoutBindings.clear();
-		descriptorSetLayoutBindings.resize(1);
+		descriptorSetLayoutBindings.resize(2);
 		// diffuse
 		descriptorSetLayoutBindings[0].binding = DIFFUSE_COMBINED_IMAGE_SAMPLER_BINDING;
 		descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		descriptorSetLayoutBindings[0].descriptorCount = 1;
 		descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		descriptorSetLayoutBindings[0].pImmutableSamplers = nullptr;
+		// normal
+		descriptorSetLayoutBindings[1].binding = NORMAL_COMBINED_IMAGE_SAMPLER_BINDING;
+		descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorSetLayoutBindings[1].descriptorCount = 1;
+		descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		descriptorSetLayoutBindings[1].pImmutableSamplers = nullptr;
 
 		descriptorSetLayoutCreateInfo.bindingCount = (uint32_t)descriptorSetLayoutBindings.size();
 		descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
-		VkU::vkApiResult = vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, nullptr, &diffuseDescriptorSetLayout);
+		VkU::vkApiResult = vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, nullptr, &diffuseNormalDescriptorSetLayout);
 	}
 
 	// PipelineLayout
@@ -181,7 +187,7 @@ void GpuController::Init(VkS::Device* _device)
 		pushConstantRanges[1].offset = sizeof(float) * 4;
 		pushConstantRanges[1].size = sizeof(float) * 4;
 
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { mvpDescriptorSetLayout, diffuseDescriptorSetLayout };
+		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { mvpDescriptorSetLayout, diffuseNormalDescriptorSetLayout };
 
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
 		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -454,7 +460,7 @@ void GpuController::Init(VkS::Device* _device)
 
 		// staging
 		{
-			createBufferInfo.size = sizeof(uint8_t) * (2 + 1024) * sizeof(Math3D2::Mat4); // 2 mat4(view projection) 1024 mat4(model matrices)
+			createBufferInfo.size = STAGING_BUFFER_SIZE; // 2 mat4(view projection) 1024 mat4(model matrices)
 			stagingBufferData = new uint8_t[createBufferInfo.size];
 
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -583,145 +589,7 @@ void GpuController::Init(VkS::Device* _device)
 	// Texture
 	{}
 	{
-		/*
-		// Staging image
-		{
-			VkU::CreateTextureInfo createTextureInfo;
-			createTextureInfo.vkDevice = device->handle;
-			createTextureInfo.physicalDevice = device->physicalDevice;
-			createTextureInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
-			createTextureInfo.extent3D = { STAGING_IMAGE_WIDTH_CAP, STAGING_IMAGE_HEIGHT_CAP, 1 };
-			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-			createTextureInfo.tiling = VK_IMAGE_TILING_LINEAR;
-			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-			VkA::CreateTexture(stagingTextureR8G8B8A8, createTextureInfo);
-		}
-
-		// Font
-		{
-			VkS::ImageData imageData;
-			imageData.data = nullptr;
-
-			VkU::LoadImageDataInfo loadImageDataInfo;
-			loadImageDataInfo.fileName = "Textures/font.tga";
-			VkA::LoadImageData(imageData, loadImageDataInfo);
-
-			VkU::CreateTextureInfo createTextureInfo;
-			createTextureInfo.vkDevice = device->handle;
-			createTextureInfo.physicalDevice = device->physicalDevice;
-			createTextureInfo.format = imageData.format;
-			createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
-			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-			createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-			VkA::CreateTexture(texture, createTextureInfo);
-
-			VkU::FillTextureInfo fillTextureInfo;
-			fillTextureInfo.vkDevice = device->handle;
-			fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
-			fillTextureInfo.width = imageData.extent2D.width;
-			fillTextureInfo.height = imageData.extent2D.height;
-			fillTextureInfo.size = imageData.size;
-			fillTextureInfo.data = imageData.data;
-			VkA::FillTexture(fillTextureInfo);
-			delete[] imageData.data;
-
-			VkU::CopyTextureInfo copyTextureInfo;
-			copyTextureInfo.vkDevice = device->handle;
-			copyTextureInfo.setupFence = setupFence;
-			copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
-			copyTextureInfo.setupQueue = graphicsQueue;
-			copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
-			copyTextureInfo.dstTexture = texture;
-			VkA::CopyTexture(copyTextureInfo);
-		}
-
-		// Diffuse
-		{
-			VkS::ImageData imageData;
-			imageData.data = nullptr;
-
-			VkU::LoadImageDataInfo loadImageDataInfo;
-			loadImageDataInfo.fileName = "Textures/rocks diffuse.tga";
-			VkA::LoadImageData(imageData, loadImageDataInfo);
-
-			VkU::CreateTextureInfo createTextureInfo;
-			createTextureInfo.vkDevice = device->handle;
-			createTextureInfo.physicalDevice = device->physicalDevice;
-			createTextureInfo.format = imageData.format;
-			createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
-			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-			createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-			VkA::CreateTexture(texture, createTextureInfo);
-
-			VkU::FillTextureInfo fillTextureInfo;
-			fillTextureInfo.vkDevice = device->handle;
-			fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
-			fillTextureInfo.width = imageData.extent2D.width;
-			fillTextureInfo.height = imageData.extent2D.height;
-			fillTextureInfo.size = imageData.size;
-			fillTextureInfo.data = imageData.data;
-			VkA::FillTexture(fillTextureInfo);
-			delete[] imageData.data;
-
-			VkU::CopyTextureInfo copyTextureInfo;
-			copyTextureInfo.vkDevice = device->handle;
-			copyTextureInfo.setupFence = setupFence;
-			copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
-			copyTextureInfo.setupQueue = graphicsQueue;
-			copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
-			copyTextureInfo.dstTexture = texture;
-			VkA::CopyTexture(copyTextureInfo);
-		}
-
-		// Normal
-		{
-			VkS::ImageData imageData;
-			imageData.data = nullptr;
-
-			VkU::LoadImageDataInfo loadImageDataInfo;
-			loadImageDataInfo.fileName = "Textures/rocks normal.tga";
-			VkA::LoadImageData(imageData, loadImageDataInfo);
-
-			VkU::CreateTextureInfo createTextureInfo;
-			createTextureInfo.vkDevice = device->handle;
-			createTextureInfo.physicalDevice = device->physicalDevice;
-			createTextureInfo.format = imageData.format;
-			createTextureInfo.extent3D = { imageData.extent2D.width, imageData.extent2D.height, 1 };
-			createTextureInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-			createTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-			createTextureInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			createTextureInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-			VkA::CreateTexture(texture, createTextureInfo);
-
-			VkU::FillTextureInfo fillTextureInfo;
-			fillTextureInfo.vkDevice = device->handle;
-			fillTextureInfo.dstTexture = stagingTextureR8G8B8A8;
-			fillTextureInfo.width = imageData.extent2D.width;
-			fillTextureInfo.height = imageData.extent2D.height;
-			fillTextureInfo.size = imageData.size;
-			fillTextureInfo.data = imageData.data;
-			VkA::FillTexture(fillTextureInfo);
-			delete[] imageData.data;
-
-			VkU::CopyTextureInfo copyTextureInfo;
-			copyTextureInfo.vkDevice = device->handle;
-			copyTextureInfo.setupFence = setupFence;
-			copyTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
-			copyTextureInfo.setupQueue = graphicsQueue;
-			copyTextureInfo.srcTexture = stagingTextureR8G8B8A8;
-			copyTextureInfo.dstTexture = texture;
-			VkA::CopyTexture(copyTextureInfo);
-		}
-		//*/
-
-		// Font
 		Loader::TextureData textureData;
-		textureData.LoadTGA("Textures/font.tga");
 
 		VkU::CreateTextureInfo2 createTextureInfo2;
 		createTextureInfo2.textureData = &textureData;
@@ -731,7 +599,17 @@ void GpuController::Init(VkS::Device* _device)
 		createTextureInfo2.setupCommandBuffer = graphicsCommandBuffer;
 		createTextureInfo2.setupQueue = graphicsQueue;
 
-		VkA::CreateTexture2(texture, createTextureInfo2);
+		// Font
+		textureData.LoadTGA("Textures/font.tga");
+		VkA::CreateTexture2(fontTexture, createTextureInfo2);
+
+		// Diffuse
+		textureData.LoadTGA("Textures/rocks diffuse.tga");
+		VkA::CreateTexture2(rocksDiffuseTexture, createTextureInfo2);
+
+		// Normal
+		textureData.LoadTGA("Textures/rocks normal.tga");
+		VkA::CreateTexture2(rocksNormalTexture, createTextureInfo2);
 	}
 
 	// Sampler
@@ -766,7 +644,7 @@ void GpuController::Init(VkS::Device* _device)
 		descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorPoolSizes[0].descriptorCount = 2;
 		descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorPoolSizes[1].descriptorCount = 1;
+		descriptorPoolSizes[1].descriptorCount = 2;
 
 		VkDescriptorPoolCreateInfo descriptorPoolCreateInfo;
 		descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -783,11 +661,11 @@ void GpuController::Init(VkS::Device* _device)
 	{
 		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {
 			mvpDescriptorSetLayout,
-			diffuseDescriptorSetLayout,
+			diffuseNormalDescriptorSetLayout,
 		};
 		std::vector<VkDescriptorSet> descriptorSets = {
 			mvpDescriptorSet,
-			diffuseDescriptorSet,
+			diffuseNormalDescriptorSet,
 		};
 
 		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
@@ -800,12 +678,12 @@ void GpuController::Init(VkS::Device* _device)
 		vkAllocateDescriptorSets(device->handle, &descriptorSetAllocateInfo, descriptorSets.data());
 
 		mvpDescriptorSet = descriptorSets[0];
-		diffuseDescriptorSet = descriptorSets[1];
+		diffuseNormalDescriptorSet = descriptorSets[1];
 	}
 
 	// UpdateDescriptorSets
 	{
-		std::vector<VkWriteDescriptorSet> writeDescriptorSet(3);
+		std::vector<VkWriteDescriptorSet> writeDescriptorSet(4);
 
 		// View Projection
 		VkDescriptorBufferInfo viewProjectionDescriptorBufferInfo;
@@ -824,7 +702,7 @@ void GpuController::Init(VkS::Device* _device)
 		writeDescriptorSet[0].pBufferInfo = &viewProjectionDescriptorBufferInfo;
 		writeDescriptorSet[0].pTexelBufferView = nullptr;
 
-		// model matricas
+		// Model matricas
 		VkDescriptorBufferInfo modelMatricesDescriptorBufferInfo;
 		modelMatricesDescriptorBufferInfo.buffer = modelMatricesBuffer.handle;
 		modelMatricesDescriptorBufferInfo.offset = 0;
@@ -841,15 +719,15 @@ void GpuController::Init(VkS::Device* _device)
 		writeDescriptorSet[1].pBufferInfo = &modelMatricesDescriptorBufferInfo;
 		writeDescriptorSet[1].pTexelBufferView = nullptr;
 
-		// diffuse texture
+		// Diffuse texture
 		VkDescriptorImageInfo diffuseDescriptorImageInfo;
 		diffuseDescriptorImageInfo.sampler = sampler;
-		diffuseDescriptorImageInfo.imageView = texture.view;
+		diffuseDescriptorImageInfo.imageView = rocksDiffuseTexture.view;
 		diffuseDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[2].pNext = nullptr;
-		writeDescriptorSet[2].dstSet = diffuseDescriptorSet;
+		writeDescriptorSet[2].dstSet = diffuseNormalDescriptorSet;
 		writeDescriptorSet[2].dstBinding = DIFFUSE_COMBINED_IMAGE_SAMPLER_BINDING;
 		writeDescriptorSet[2].dstArrayElement = 0;
 		writeDescriptorSet[2].descriptorCount = 1;
@@ -857,6 +735,23 @@ void GpuController::Init(VkS::Device* _device)
 		writeDescriptorSet[2].pImageInfo = &diffuseDescriptorImageInfo;
 		writeDescriptorSet[2].pBufferInfo = nullptr;
 		writeDescriptorSet[2].pTexelBufferView = nullptr;
+
+		// Normal texture
+		VkDescriptorImageInfo normalDescriptorImageInfo;
+		normalDescriptorImageInfo.sampler = sampler;
+		normalDescriptorImageInfo.imageView = rocksNormalTexture.view;
+		normalDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet[3].pNext = nullptr;
+		writeDescriptorSet[3].dstSet = diffuseNormalDescriptorSet;
+		writeDescriptorSet[3].dstBinding = NORMAL_COMBINED_IMAGE_SAMPLER_BINDING;
+		writeDescriptorSet[3].dstArrayElement = 0;
+		writeDescriptorSet[3].descriptorCount = 1;
+		writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescriptorSet[3].pImageInfo = &normalDescriptorImageInfo;
+		writeDescriptorSet[3].pBufferInfo = nullptr;
+		writeDescriptorSet[3].pTexelBufferView = nullptr;
 
 		vkUpdateDescriptorSets(device->handle, (uint32_t)writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
 	}
@@ -869,7 +764,6 @@ void GpuController::Run()
 
 	// Draw o secondary command buffer
 	{
-		//std::cout << "Aquire\n";
 		vkWaitForFences(device->handle, 1, &setupFence, VK_TRUE, -1);
 		vkResetFences(device->handle, 1, &setupFence);
 		vkAcquireNextImageKHR(device->handle, window->swapchain, ~0U, window->imageAvailableSemaphore, setupFence, &window->imageIndex);
@@ -890,10 +784,6 @@ void GpuController::Run()
 		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 		commandBufferBeginInfo.pInheritanceInfo = &commandBufferInheritanceInfo;
 
-		//std::cout << "SecondaryBegin\n";
-		//vkWaitForFences(device->handle, 1, &window->fences[window->imageIndex], VK_TRUE, -1);
-		//vkResetFences(device->handle, 1, &window->fences[window->imageIndex]);
-
 		vkBeginCommandBuffer(window->secondaryCommandBuffers[window->imageIndex], &commandBufferBeginInfo);
 
 		VkDeviceSize offset = 0;
@@ -906,9 +796,13 @@ void GpuController::Run()
 			float blue = 0.0f;
 		} vertexShaderPushConstantData;
 
+		vertexShaderPushConstantData.red =   sinf(timer.GetTime()) * 3;
+		vertexShaderPushConstantData.green = cosf(timer.GetTime()) * 3;
+		vertexShaderPushConstantData.blue = -1;
+
 		{
 			vkCmdBindPipeline(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelines[0]);
-			std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseDescriptorSet };
+			std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseNormalDescriptorSet };
 			vkCmdBindDescriptorSets(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush4Vert4FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
 			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush4Vert4FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VertexShaderPushConstantData), &vertexShaderPushConstantData);
@@ -958,30 +852,20 @@ void GpuController::Run()
 	Math3D2::Vec3 cameraPosition = Math3D2::Mat4::ExtractPosition(viewProjectionData[0]);
 
 	//system("cls");
-	//std::cout << "\nX = " << cameraPosition.x << "\nY = " << cameraPosition.y << "\nZ = " << cameraPosition.z;
+	//
+	//std::cout
+	//	<< "\nXX = " << cameraPosition.x << "	XY = " << cameraPosition.y << "	XZ = " << cameraPosition.z << "\n\n";
+	//std::cout
+	//	<< "\nXX = " << viewProjectionData[0].xx << "	XY = " << viewProjectionData[0].xy << "	XZ = " << viewProjectionData[0].xz << "	XW = " << viewProjectionData[0].xw
+	//	<< "\nYX = " << viewProjectionData[0].yx << "	YY = " << viewProjectionData[0].yy << "	YZ = " << viewProjectionData[0].yz << "	YW = " << viewProjectionData[0].yw
+	//	<< "\nZX = " << viewProjectionData[0].zx << "	ZY = " << viewProjectionData[0].zy << "	ZZ = " << viewProjectionData[0].zz << "	ZW = " << viewProjectionData[0].zw
+	//	<< "\nWX = " << viewProjectionData[0].wx << "	WY = " << viewProjectionData[0].wy << "	WZ = " << viewProjectionData[0].wz << "	WW = " << viewProjectionData[0].ww;
 
 	// Update model
 	{
 		static Math3D2::Mat4 transform = Math3D2::Mat4::GetIdentity();
 		
-		if (!GetAsyncKeyState(VK_SHIFT))
-		{
-			if (GetAsyncKeyState('J'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
-			if (GetAsyncKeyState('L'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(+deltaTime), 0.0f, 0.0f }) * transform;
-
-			if (GetAsyncKeyState('U'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
-			if (GetAsyncKeyState('O'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(+deltaTime), 0.0f }) * transform;
-
-			if (GetAsyncKeyState('I'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
-			if (GetAsyncKeyState('K'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(+deltaTime) }) * transform;
-		}
-		else
+		if (GetAsyncKeyState(VK_SHIFT))
 		{
 			if (GetAsyncKeyState('J'))
 				transform = Math3D2::Mat4::GetRotateXMatrix((float)(-deltaTime)) * transform;
@@ -997,6 +881,40 @@ void GpuController::Run()
 				transform = Math3D2::Mat4::GetRotateZMatrix((float)(-deltaTime)) * transform;
 			if (GetAsyncKeyState('K'))
 				transform = Math3D2::Mat4::GetRotateZMatrix((float)(+deltaTime)) * transform;
+		}
+		else if (GetAsyncKeyState(VK_CONTROL))
+		{
+			if (GetAsyncKeyState('J'))
+				transform = Math3D2::Mat4::GetScaleMatrix({ (float)(1.0f - deltaTime), 1.0f, 1.0f }) * transform;
+			if (GetAsyncKeyState('L'))
+				transform = Math3D2::Mat4::GetScaleMatrix({ (float)(1.0f + deltaTime), 1.0f, 1.0f }) * transform;
+
+			if (GetAsyncKeyState('U'))
+				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f - deltaTime), 1.0f }) * transform;
+			if (GetAsyncKeyState('O'))
+				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f + deltaTime), 1.0f }) * transform;
+
+			if (GetAsyncKeyState('I'))
+				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f - deltaTime) }) * transform;
+			if (GetAsyncKeyState('K'))
+				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f + deltaTime) }) * transform;
+		}
+		else
+		{
+			if (GetAsyncKeyState('J'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
+			if (GetAsyncKeyState('L'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(+deltaTime), 0.0f, 0.0f }) * transform;
+
+			if (GetAsyncKeyState('U'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
+			if (GetAsyncKeyState('O'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(+deltaTime), 0.0f }) * transform;
+
+			if (GetAsyncKeyState('I'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
+			if (GetAsyncKeyState('K'))
+				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(+deltaTime) }) * transform;
 		}
 
 		modelMatricesData[0] = transform;
@@ -1114,13 +1032,17 @@ void GpuController::ShutDown()
 	vkDestroySampler(device->handle, sampler, nullptr);
 
 	// Textures
-	vkDestroyImageView(device->handle, stagingTextureR8G8B8A8.view, nullptr);
-	vkDestroyImage(device->handle, stagingTextureR8G8B8A8.handle, nullptr);
-	vkFreeMemory(device->handle, stagingTextureR8G8B8A8.memory, nullptr);
+	vkDestroyImageView(device->handle, fontTexture.view, nullptr);
+	vkDestroyImage(device->handle, fontTexture.handle, nullptr);
+	vkFreeMemory(device->handle, fontTexture.memory, nullptr);
 
-	vkDestroyImageView(device->handle, texture.view, nullptr);
-	vkDestroyImage(device->handle, texture.handle, nullptr);
-	vkFreeMemory(device->handle, texture.memory, nullptr);
+	vkDestroyImageView(device->handle, rocksDiffuseTexture.view, nullptr);
+	vkDestroyImage(device->handle, rocksDiffuseTexture.handle, nullptr);
+	vkFreeMemory(device->handle, rocksDiffuseTexture.memory, nullptr);
+
+	vkDestroyImageView(device->handle, rocksNormalTexture.view, nullptr);
+	vkDestroyImage(device->handle, rocksNormalTexture.handle, nullptr);
+	vkFreeMemory(device->handle, rocksNormalTexture.memory, nullptr);
 
 	// Buffers
 	vkDestroyBuffer(device->handle, indexBuffer.handle, nullptr);
@@ -1151,7 +1073,7 @@ void GpuController::ShutDown()
 	vkDestroyPipelineLayout(device->handle, mvpPush4Vert4FragPipelineLayout, nullptr);
 
 	// DescriptorSetLayout
-	vkDestroyDescriptorSetLayout(device->handle, diffuseDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(device->handle, diffuseNormalDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device->handle, mvpDescriptorSetLayout, nullptr);
 
 	/// Window Resources

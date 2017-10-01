@@ -223,6 +223,17 @@ namespace Math3D2
 
 			return mat;
 		}
+		static Mat4 GetScaleMatrix(Vec3 _scale)
+		{
+			Mat4 mat;
+
+			mat.xx = _scale.x;	mat.xy = 0.0f;		mat.xz = 0.0f;		mat.xw = 0.0f;
+			mat.yx = 0.0f;		mat.yy = _scale.y;	mat.yz = 0.0f;		mat.yw = 0.0f;
+			mat.zx = 0.0f;		mat.zy = 0.0f;		mat.zz = _scale.z;	mat.zw = 0.0f;
+			mat.wx = 0.0f;		mat.wy = 0.0f;		mat.wz = 0.0f;		mat.ww = 1.0f;
+
+			return mat;
+		}
 		static Mat4 GetLookAt(Vec3 _origin, Vec3 _target, Vec3 _up)
 		{
 			Math3D2::Mat4 mat;
@@ -287,7 +298,7 @@ namespace Math3D2
 
 		static Vec3 ExtractPosition(Mat4 _source)
 		{
-			return { _source.wx, _source.wy, _source.wz };
+			return { _source.xz * _source.wz, _source.yz * _source.wz, _source.zz * _source.wz };
 		}
 	};
 }
