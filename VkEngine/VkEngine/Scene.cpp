@@ -9,9 +9,9 @@ void Scene::Init()
 	view = Math3D::Mat4::GetLookAt(cameraPosition, cameraTarget, cameraUp);
 
 	VkS::Text2D text;
-	text.position = { -0.99f, -0.98f };
-	text.scale = { 0.02f, 0.02f };
-	text.spacing = { 0.04f, 0.1f };
+	text.position = { -0.90f, -0.85f };
+	text.scale = { 0.05f, 0.06f };
+	text.spacing = { 0.075f, 0.05f };
 	text.color = { 0.0f, 0.0f, 0.0f, 0.0f };
 	text.text = "Hello World!\n0123...?";
 	texts2D.push_back(text);

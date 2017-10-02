@@ -248,11 +248,11 @@ void GpuController::Init(VkS::Device* _device)
 		createShaderModuleInfo.vkDevice = device->handle;
 
 		// Text
-		createShaderModuleInfo.filename = "Shaders/vert.spv";
+		createShaderModuleInfo.filename = "Shaders/Text/vert.spv";
 		VkA::CreateShaderModule(vertexTextShaderModule, createShaderModuleInfo);
-		createShaderModuleInfo.filename = "Shaders/geom.spv";
+		createShaderModuleInfo.filename = "Shaders/Text/geom.spv";
 		VkA::CreateShaderModule(geometryTextShaderModule, createShaderModuleInfo);
-		createShaderModuleInfo.filename = "Shaders/frag.spv";
+		createShaderModuleInfo.filename = "Shaders/Text/frag.spv";
 		VkA::CreateShaderModule(fragmentTextShaderModule, createShaderModuleInfo);
 
 		// Parallax Occlusion
@@ -450,19 +450,34 @@ void GpuController::Init(VkS::Device* _device)
 
 		// Depth
 		{
-			pipelineData.pipelineDepthStencilStateCreateInfos.resize(1);
+			pipelineData.pipelineDepthStencilStateCreateInfos.resize(2);
+			// Text
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].pNext = nullptr;
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].flags = VK_RESERVED_FOR_FUTURE_USE;
-			pipelineData.pipelineDepthStencilStateCreateInfos[0].depthTestEnable = VK_TRUE;
-			pipelineData.pipelineDepthStencilStateCreateInfos[0].depthWriteEnable = VK_TRUE;
-			pipelineData.pipelineDepthStencilStateCreateInfos[0].depthCompareOp = VK_COMPARE_OP_LESS;
+			pipelineData.pipelineDepthStencilStateCreateInfos[0].depthTestEnable = VK_FALSE;
+			pipelineData.pipelineDepthStencilStateCreateInfos[0].depthWriteEnable = VK_FALSE;
+			pipelineData.pipelineDepthStencilStateCreateInfos[0].depthCompareOp = VK_COMPARE_OP_NEVER;
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].depthBoundsTestEnable = VK_FALSE;
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].stencilTestEnable = VK_FALSE;
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].front = {};
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].back = {};
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].minDepthBounds = 0.0f;
 			pipelineData.pipelineDepthStencilStateCreateInfos[0].maxDepthBounds = 1.0f;
+
+			// Parallax Occlusion
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].pNext = nullptr;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].flags = VK_RESERVED_FOR_FUTURE_USE;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].depthTestEnable = VK_TRUE;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].depthWriteEnable = VK_TRUE;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].depthCompareOp = VK_COMPARE_OP_LESS;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].depthBoundsTestEnable = VK_FALSE;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].stencilTestEnable = VK_FALSE;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].front = {};
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].back = {};
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].minDepthBounds = 0.0f;
+			pipelineData.pipelineDepthStencilStateCreateInfos[1].maxDepthBounds = 1.0f;
 		}
 
 		// Color Blend
@@ -532,7 +547,7 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[1].pViewportState = &pipelineData.pipelineViewportStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pRasterizationState = &pipelineData.pipelineRasterizationStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pMultisampleState = &pipelineData.pipelineMultisampleStateCreateInfos[0];
-			graphicsPipelineCreateInfos[1].pDepthStencilState = &pipelineData.pipelineDepthStencilStateCreateInfos[0];
+			graphicsPipelineCreateInfos[1].pDepthStencilState = &pipelineData.pipelineDepthStencilStateCreateInfos[1];
 			graphicsPipelineCreateInfos[1].pColorBlendState = &pipelineData.pipelineColorBlendStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pDynamicState = nullptr;
 			graphicsPipelineCreateInfos[1].layout = mvpPush8Vert8FragPipelineLayout;
@@ -706,7 +721,7 @@ void GpuController::Init(VkS::Device* _device)
 		createTextureInfo2.setupQueue = graphicsQueue;
 
 		// Font
-		textureData.LoadTGA("Textures/font2.tga");
+		textureData.LoadTGA("Textures/font3.tga");
 		VkA::CreateTexture2(fontTexture, createTextureInfo2);
 
 		// Diffuse
