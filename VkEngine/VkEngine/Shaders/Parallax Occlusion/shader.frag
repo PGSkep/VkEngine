@@ -3,7 +3,9 @@
 
 layout(push_constant) uniform PushConstants
 {
-	layout(offset = 16) vec4 color;
+	layout(offset = 8)
+	float heightScale;
+	float numLayers;
 } pushConstants;
 
 layout(location = 0) in vec2 inTexCoord;
@@ -16,17 +18,14 @@ layout(location = 0) out vec4 outColor;
 layout(set = 1, binding = 0) uniform sampler2D diffuseSampler;
 layout(set = 1, binding = 1) uniform sampler2D normalSampler;
 
-float heightScale = -.1;
-float numLayers = 48.0;
-
 vec2 parallaxOcclusionMapping(vec2 _uv, vec3 _viewDirection) 
 {
-	float layerDepth = 1.0 / numLayers;
+	float layerDepth = 1.0 / pushConstants.numLayers;
 	float currLayerDepth = 0.0;
-	vec2 deltaUV = _viewDirection.xy * heightScale / (_viewDirection.z * numLayers);
+	vec2 deltaUV = _viewDirection.xy * pushConstants.heightScale / (_viewDirection.z * pushConstants.numLayers);
 	vec2 currUV = _uv;
 	float height = 1.0 - texture(normalSampler, currUV).a;
-	for (int i = 0; i < numLayers; i++) {
+	for (int i = 0; i < pushConstants.numLayers; i++) {
 		currLayerDepth += layerDepth;
 		currUV -= deltaUV;
 		height = 1.0 - texture(normalSampler, currUV).a;
@@ -42,8 +41,8 @@ vec2 parallaxOcclusionMapping(vec2 _uv, vec3 _viewDirection)
 
 void main()
 {
-	vec3 V = normalize(inTangentViewPos - inTangentFragPos);
-	V.x = -V.x;
+	vec3 V = normalize(inTangentViewPos + inTangentFragPos);
+	V.y = -V.y;
 
 	vec2 uv = abs(vec2(inTexCoord.x, inTexCoord.y));
 	uv = parallaxOcclusionMapping(uv, V);

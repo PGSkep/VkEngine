@@ -6,6 +6,7 @@
 #include "Scene.h"
 #include "Timer.h"
 #include "Loader.h"
+#include "Input.h"
 
 class GpuController
 {
@@ -37,8 +38,11 @@ class GpuController
 
 	VkPipelineLayout mvpPush4Vert4FragPipelineLayout;
 
-	VkShaderModule vertexShaderModule;
-	VkShaderModule fragmentShaderModule;
+	VkShaderModule vertexTextShaderModule;
+	VkShaderModule geometryTextShaderModule;
+	VkShaderModule fragmentTextShaderModule;
+	VkShaderModule vertexParallaxOcclusionShaderModule;
+	VkShaderModule fragmentParallaxOcclusionShaderModule;
 
 	VkS::PipelineData pipelineData;
 	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfos;
@@ -46,11 +50,14 @@ class GpuController
 	std::vector<VkPipeline> graphicsPipelines;
 	//VkPipeline computePipeline;
 
+	VkPipeline textPipeline;
+	VkPipeline parallaxOcclusionPipeline;
+
 	void* stagingBufferData;
 	VkS::Buffer stagingBuffer;
-	Math3D2::Mat4 viewProjectionData[2];
+	Math3D::Mat4 viewProjectionData[2];
 	VkS::Buffer viewProjectionBuffer;
-	Math3D2::Mat4 modelMatricesData[1024];
+	Math3D::Mat4 modelMatricesData[1024];
 	VkS::Buffer modelMatricesBuffer;
 	VkS::Buffer vertexBuffer;
 	VkS::Buffer indexBuffer;

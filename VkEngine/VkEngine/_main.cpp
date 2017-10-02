@@ -6,7 +6,6 @@
 #include "GpuController.h"
 
 #include "Math3D.h"
-#include "Input.h"
 
 int main()
 {

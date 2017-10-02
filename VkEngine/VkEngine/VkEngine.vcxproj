@@ -133,13 +133,13 @@
   <ItemGroup>
     <None Include="Shaders\shader.comp" />
     <None Include="Shaders\shader.frag" />
-    <None Include="Shaders\shader.tesc" />
-    <None Include="Shaders\shader.tese" />
+    <None Include="Shaders\shader.geom" />
     <None Include="Shaders\shader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Gpu.cpp" />
     <ClCompile Include="GpuController.cpp" />
+    <ClCompile Include="Input.cpp" />
     <ClCompile Include="Math3D.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Vk.cpp" />

@@ -4,9 +4,7 @@
 layout(push_constant) uniform PushConstants
 {
 	uint modelMatrixIndex;
-	float red;
-	float green;
-	float blue;
+	float time;
 } pushConstants;
 
 layout(set = 0, binding = 0) uniform ViewProjection
@@ -47,8 +45,7 @@ void main()
 	gl_Position = vp.projection * vp.view * modelMatrix * vec4(inPosition, 1.0);
 	outTexCoord = inTexCoord;
 
-	outTangentFragPos = vec3(modelMatrix * vec4(inPosition, 1.0));
-	outTangentFragPos  = TBN * outTangentFragPos;
-	outTangentLightPos = TBN * vec3(pushConstants.red, pushConstants.green, pushConstants.blue);
+	outTangentFragPos = TBN * vec3(modelMatrix * vec4(inPosition, 1.0));
+	outTangentLightPos = TBN * vec3(sin(pushConstants.time) * 3, -cos(pushConstants.time) * 3, -2);
 	outTangentViewPos = TBN * cameraPosition;
 }

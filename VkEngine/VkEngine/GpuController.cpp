@@ -10,6 +10,8 @@
 
 void GpuController::Init(VkS::Device* _device)
 {
+	Input::Init();
+
 	timer.SetResolution(Timer::RESOLUTION::RESOLUTION_NANOSECONDS);
 	timer.Play();
 	lastTime = timer.GetTime();
@@ -181,11 +183,11 @@ void GpuController::Init(VkS::Device* _device)
 		// vertex 0~4
 		pushConstantRanges[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 		pushConstantRanges[0].offset = 0;
-		pushConstantRanges[0].size = sizeof(float) * 4;
+		pushConstantRanges[0].size = sizeof(float) * 2;
 		// fragment 4~8
 		pushConstantRanges[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-		pushConstantRanges[1].offset = sizeof(float) * 4;
-		pushConstantRanges[1].size = sizeof(float) * 4;
+		pushConstantRanges[1].offset = sizeof(float) * 2;
+		pushConstantRanges[1].size = sizeof(float) * 2;
 
 		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { mvpDescriptorSetLayout, diffuseNormalDescriptorSetLayout };
 
@@ -205,49 +207,89 @@ void GpuController::Init(VkS::Device* _device)
 	{
 		VkU::CreateShaderModuleInfo createShaderModuleInfo;
 		createShaderModuleInfo.vkDevice = device->handle;
-		createShaderModuleInfo.filename = "Shaders/vert.spv";
-		VkA::CreateShaderModule(vertexShaderModule, createShaderModuleInfo);
 
+		// Text
+		createShaderModuleInfo.filename = "Shaders/vert.spv";
+		VkA::CreateShaderModule(vertexTextShaderModule, createShaderModuleInfo);
+		createShaderModuleInfo.filename = "Shaders/geom.spv";
+		VkA::CreateShaderModule(geometryTextShaderModule, createShaderModuleInfo);
 		createShaderModuleInfo.filename = "Shaders/frag.spv";
-		VkA::CreateShaderModule(fragmentShaderModule, createShaderModuleInfo);
+		VkA::CreateShaderModule(fragmentTextShaderModule, createShaderModuleInfo);
+
+		// Parallax Occlusion
+		createShaderModuleInfo.filename = "Shaders/Parallax Occlusion/vert.spv";
+		VkA::CreateShaderModule(vertexParallaxOcclusionShaderModule, createShaderModuleInfo);
+		createShaderModuleInfo.filename = "Shaders/Parallax Occlusion/frag.spv";
+		VkA::CreateShaderModule(fragmentParallaxOcclusionShaderModule, createShaderModuleInfo);
 	}
 
 	// PipelineData
 	{
 		// Shader
 		{
-			pipelineData.shaderStageCreateInfos.resize(1);
-			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.resize(2);
+			pipelineData.shaderStageCreateInfos.resize(2);
 
+			// Text
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.resize(3);
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].pNext = nullptr;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].flags = VK_RESERVED_FOR_FUTURE_USE;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].module = vertexShaderModule;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].module = vertexTextShaderModule;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].pName = "main";
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[0].pSpecializationInfo = nullptr;
-
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].pNext = nullptr;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].flags = VK_RESERVED_FOR_FUTURE_USE;
-			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].module = fragmentShaderModule;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].module = geometryTextShaderModule;
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].pName = "main";
 			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[1].pSpecializationInfo = nullptr;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].pNext = nullptr;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].flags = VK_RESERVED_FOR_FUTURE_USE;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].module = fragmentTextShaderModule;
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].pName = "main";
+			pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo[2].pSpecializationInfo = nullptr;
+
+			// Parallax Occlusion
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo.resize(2);
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[0].pNext = nullptr;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[0].flags = VK_RESERVED_FOR_FUTURE_USE;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[0].module = vertexParallaxOcclusionShaderModule;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[0].pName = "main";
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[0].pSpecializationInfo = nullptr;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[1].pNext = nullptr;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[1].flags = VK_RESERVED_FOR_FUTURE_USE;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[1].module = fragmentParallaxOcclusionShaderModule;
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[1].pName = "main";
+			pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo[1].pSpecializationInfo = nullptr;
 		}
 
 		// Vertex Input
 		{
-			pipelineData.vertexInputBindingDescriptions.resize(1);
+			pipelineData.vertexInputBindingDescriptions.resize(2);
+
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].binding = 0;
-			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
+			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV));
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions.resize(1);
+			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].binding = 0;
+			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
+			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+			
+			pipelineData.vertexInputAttributeDescriptions.resize(2);
+			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV));
+			pipelineData.vertexInputAttributeDescriptions[1].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
 
-			pipelineData.vertexInputAttributeDescriptions.resize(1);
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
-
-			pipelineData.pipelineVertexInputStateCreateInfos.resize(1);
+			// Text?
+			pipelineData.pipelineVertexInputStateCreateInfos.resize(2);
 			pipelineData.pipelineVertexInputStateCreateInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 			pipelineData.pipelineVertexInputStateCreateInfos[0].pNext = nullptr;
 			pipelineData.pipelineVertexInputStateCreateInfos[0].flags = VK_RESERVED_FOR_FUTURE_USE;
@@ -255,6 +297,15 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.pipelineVertexInputStateCreateInfos[0].pVertexBindingDescriptions = pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions.data();
 			pipelineData.pipelineVertexInputStateCreateInfos[0].vertexAttributeDescriptionCount = (uint32_t)pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions.size();
 			pipelineData.pipelineVertexInputStateCreateInfos[0].pVertexAttributeDescriptions = pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions.data();
+
+			// Parallax Occlusion
+			pipelineData.pipelineVertexInputStateCreateInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			pipelineData.pipelineVertexInputStateCreateInfos[1].pNext = nullptr;
+			pipelineData.pipelineVertexInputStateCreateInfos[1].flags = VK_RESERVED_FOR_FUTURE_USE;
+			pipelineData.pipelineVertexInputStateCreateInfos[1].vertexBindingDescriptionCount = (uint32_t)pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions.size();
+			pipelineData.pipelineVertexInputStateCreateInfos[1].pVertexBindingDescriptions = pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions.data();
+			pipelineData.pipelineVertexInputStateCreateInfos[1].vertexAttributeDescriptionCount = (uint32_t)pipelineData.vertexInputAttributeDescriptions[1].vertexInputAttributeDescriptions.size();
+			pipelineData.pipelineVertexInputStateCreateInfos[1].pVertexAttributeDescriptions = pipelineData.vertexInputAttributeDescriptions[1].vertexInputAttributeDescriptions.data();
 		}
 
 		// Input Assembly
@@ -304,6 +355,7 @@ void GpuController::Init(VkS::Device* _device)
 
 		// Rasterization
 		{
+			// Fill
 			pipelineData.pipelineRasterizationStateCreateInfos.resize(2);
 			pipelineData.pipelineRasterizationStateCreateInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 			pipelineData.pipelineRasterizationStateCreateInfos[0].pNext = nullptr;
@@ -319,6 +371,7 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.pipelineRasterizationStateCreateInfos[0].depthBiasSlopeFactor = 0.0f;
 			pipelineData.pipelineRasterizationStateCreateInfos[0].lineWidth = 1.0f;
 
+			// Wireframe
 			pipelineData.pipelineRasterizationStateCreateInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 			pipelineData.pipelineRasterizationStateCreateInfos[1].pNext = nullptr;
 			pipelineData.pipelineRasterizationStateCreateInfos[1].flags = VK_RESERVED_FOR_FUTURE_USE;
@@ -398,12 +451,14 @@ void GpuController::Init(VkS::Device* _device)
 		// GraphicsPipelineCreateInfos
 		{
 			graphicsPipelineCreateInfos.resize(2);
+
+			// Text
 			graphicsPipelineCreateInfos[0].sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 			graphicsPipelineCreateInfos[0].pNext = nullptr;
 			graphicsPipelineCreateInfos[0].flags = 0;
 			graphicsPipelineCreateInfos[0].stageCount = (uint32_t)pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.size();
 			graphicsPipelineCreateInfos[0].pStages = pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.data();
-			graphicsPipelineCreateInfos[0].pVertexInputState = &pipelineData.pipelineVertexInputStateCreateInfos[0];
+			graphicsPipelineCreateInfos[0].pVertexInputState = &pipelineData.pipelineVertexInputStateCreateInfos[1];
 			graphicsPipelineCreateInfos[0].pInputAssemblyState = &pipelineData.pipelineInputAssemblyStateCreateInfos[0];
 			graphicsPipelineCreateInfos[0].pTessellationState = &pipelineData.pipelineTessellationStateCreateInfo[0];
 			graphicsPipelineCreateInfos[0].pViewportState = &pipelineData.pipelineViewportStateCreateInfos[0];
@@ -418,16 +473,17 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[0].basePipelineHandle = VK_NULL_HANDLE;
 			graphicsPipelineCreateInfos[0].basePipelineIndex = 0;
 
+			// parallax occlusion
 			graphicsPipelineCreateInfos[1].sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 			graphicsPipelineCreateInfos[1].pNext = nullptr;
 			graphicsPipelineCreateInfos[1].flags = 0;
-			graphicsPipelineCreateInfos[1].stageCount = (uint32_t)pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.size();
-			graphicsPipelineCreateInfos[1].pStages = pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.data();
-			graphicsPipelineCreateInfos[1].pVertexInputState = &pipelineData.pipelineVertexInputStateCreateInfos[0];
+			graphicsPipelineCreateInfos[1].stageCount = (uint32_t)pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo.size();
+			graphicsPipelineCreateInfos[1].pStages = pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo.data();
+			graphicsPipelineCreateInfos[1].pVertexInputState = &pipelineData.pipelineVertexInputStateCreateInfos[1];
 			graphicsPipelineCreateInfos[1].pInputAssemblyState = &pipelineData.pipelineInputAssemblyStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pTessellationState = &pipelineData.pipelineTessellationStateCreateInfo[0];
 			graphicsPipelineCreateInfos[1].pViewportState = &pipelineData.pipelineViewportStateCreateInfos[0];
-			graphicsPipelineCreateInfos[1].pRasterizationState = &pipelineData.pipelineRasterizationStateCreateInfos[1];
+			graphicsPipelineCreateInfos[1].pRasterizationState = &pipelineData.pipelineRasterizationStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pMultisampleState = &pipelineData.pipelineMultisampleStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pDepthStencilState = &pipelineData.pipelineDepthStencilStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pColorBlendState = &pipelineData.pipelineColorBlendStateCreateInfos[0];
@@ -444,7 +500,11 @@ void GpuController::Init(VkS::Device* _device)
 	{}
 	{
 		graphicsPipelines.resize(graphicsPipelineCreateInfos.size());
-		vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, graphicsPipelines.data());
+		//vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, graphicsPipelines.data());
+		vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, (uint32_t)1, &graphicsPipelineCreateInfos[1], nullptr, &graphicsPipelines[1]);
+
+		textPipeline = graphicsPipelines[0];
+		parallaxOcclusionPipeline = graphicsPipelines[1];
 	}
 
 	// ComputePipeline
@@ -486,7 +546,7 @@ void GpuController::Init(VkS::Device* _device)
 		{
 			viewProjectionData[0] = scene.view;
 
-			viewProjectionData[1] = Math3D2::Mat4::GetPerspectiveProjection(45.0f, (float)window->extent.width, (float)window->extent.height, 0.1f, 1000.0f);
+			viewProjectionData[1] = Math3D::Mat4::GetPerspectiveProjection(45.0f, (float)window->extent.width, (float)window->extent.height, 0.1f, 1000.0f);
 
 			createBufferInfo.size = sizeof(viewProjectionData);
 			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -758,6 +818,8 @@ void GpuController::Init(VkS::Device* _device)
 }
 void GpuController::Run()
 {
+	Input::Update();
+
 	double newTime = timer.GetTime();
 	deltaTime = lastTime - newTime;
 	lastTime = newTime;
@@ -791,26 +853,48 @@ void GpuController::Run()
 		struct VertexShaderPushConstantData
 		{
 			uint32_t modelMatrixIndex = 0;
-			float red = 0.0f;
-			float green = 0.0f;
-			float blue = 0.0f;
+			float time = 0.0f;
 		} vertexShaderPushConstantData;
+		vertexShaderPushConstantData.time = (float)timer.GetTime();
+		
+		struct FragmentShaderPushConstantData
+		{
+			float heightScale = 0.1f;
+			float numLayers = 32.0f;
+		};
+		
+		static FragmentShaderPushConstantData fragmentShaderPushConstantData;
 
-		vertexShaderPushConstantData.red =   sinf(timer.GetTime()) * 3;
-		vertexShaderPushConstantData.green = cosf(timer.GetTime()) * 3;
-		vertexShaderPushConstantData.blue = -1;
+		if (!Input::GetKeyInputState(Input::KEY_SHIFT) == Input::INPUT_STATE_IDLE)
+		{
+			if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
+				fragmentShaderPushConstantData.heightScale -= 0.1f * deltaTime;
+			if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
+				fragmentShaderPushConstantData.heightScale += 0.1f * deltaTime;
+		}
+		else
+		{
+			if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
+				fragmentShaderPushConstantData.numLayers -= 2.0f * deltaTime;
+			if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
+				fragmentShaderPushConstantData.numLayers += 2.0f * deltaTime;
+		}
 
 		{
-			vkCmdBindPipeline(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelines[0]);
+			// parallax occlusion
+			vkCmdBindPipeline(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, parallaxOcclusionPipeline);
 			std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseNormalDescriptorSet };
 			vkCmdBindDescriptorSets(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush4Vert4FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
 			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush4Vert4FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VertexShaderPushConstantData), &vertexShaderPushConstantData);
+			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush4Vert4FragPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(VertexShaderPushConstantData), sizeof(FragmentShaderPushConstantData), &fragmentShaderPushConstantData);
 
 			vkCmdBindVertexBuffers(window->secondaryCommandBuffers[window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
 			vkCmdBindIndexBuffer(window->secondaryCommandBuffers[window->imageIndex], indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
 
 			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], indexCount, 1, 0, 0, 0);
+
+			// text
 		}
 
 		vkEndCommandBuffer(window->secondaryCommandBuffers[window->imageIndex]);
@@ -844,12 +928,12 @@ void GpuController::Run()
 		if (GetAsyncKeyState('S'))
 			scene.cameraPosition.z += (float)(deltaTime);
 
-		scene.view = Math3D2::Mat4::GetLookAt(scene.cameraPosition, scene.cameraTarget, scene.cameraUp);
+		scene.view = Math3D::Mat4::GetLookAt(scene.cameraPosition, scene.cameraTarget, scene.cameraUp);
 
 		viewProjectionData[0] = scene.view;
 	}
 
-	Math3D2::Vec3 cameraPosition = Math3D2::Mat4::ExtractPosition(viewProjectionData[0]);
+	Math3D::Vec3 cameraPosition = Math3D::Mat4::ExtractPosition(viewProjectionData[0]);
 
 	//system("cls");
 	//
@@ -863,58 +947,58 @@ void GpuController::Run()
 
 	// Update model
 	{
-		static Math3D2::Mat4 transform = Math3D2::Mat4::GetIdentity();
+		static Math3D::Mat4 transform = Math3D::Mat4::GetIdentity();
 		
 		if (GetAsyncKeyState(VK_SHIFT))
 		{
 			if (GetAsyncKeyState('J'))
-				transform = Math3D2::Mat4::GetRotateXMatrix((float)(-deltaTime)) * transform;
+				transform = Math3D::Mat4::GetRotateZMatrix((float)(-deltaTime)) * transform;
 			if (GetAsyncKeyState('L'))
-				transform = Math3D2::Mat4::GetRotateXMatrix((float)(+deltaTime)) * transform;
+				transform = Math3D::Mat4::GetRotateZMatrix((float)(+deltaTime)) * transform;
 
 			if (GetAsyncKeyState('U'))
-				transform = Math3D2::Mat4::GetRotateYMatrix((float)(-deltaTime)) * transform;
+				transform = Math3D::Mat4::GetRotateYMatrix((float)(-deltaTime)) * transform;
 			if (GetAsyncKeyState('O'))
-				transform = Math3D2::Mat4::GetRotateYMatrix((float)(+deltaTime)) * transform;
+				transform = Math3D::Mat4::GetRotateYMatrix((float)(+deltaTime)) * transform;
 
 			if (GetAsyncKeyState('I'))
-				transform = Math3D2::Mat4::GetRotateZMatrix((float)(-deltaTime)) * transform;
+				transform = Math3D::Mat4::GetRotateXMatrix((float)(-deltaTime)) * transform;
 			if (GetAsyncKeyState('K'))
-				transform = Math3D2::Mat4::GetRotateZMatrix((float)(+deltaTime)) * transform;
+				transform = Math3D::Mat4::GetRotateXMatrix((float)(+deltaTime)) * transform;
 		}
 		else if (GetAsyncKeyState(VK_CONTROL))
 		{
 			if (GetAsyncKeyState('J'))
-				transform = Math3D2::Mat4::GetScaleMatrix({ (float)(1.0f - deltaTime), 1.0f, 1.0f }) * transform;
+				transform = Math3D::Mat4::GetScaleMatrix({ (float)(1.0f - deltaTime), 1.0f, 1.0f }) * transform;
 			if (GetAsyncKeyState('L'))
-				transform = Math3D2::Mat4::GetScaleMatrix({ (float)(1.0f + deltaTime), 1.0f, 1.0f }) * transform;
+				transform = Math3D::Mat4::GetScaleMatrix({ (float)(1.0f + deltaTime), 1.0f, 1.0f }) * transform;
 
 			if (GetAsyncKeyState('U'))
-				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f - deltaTime), 1.0f }) * transform;
+				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f - deltaTime), 1.0f }) * transform;
 			if (GetAsyncKeyState('O'))
-				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f + deltaTime), 1.0f }) * transform;
+				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f + deltaTime), 1.0f }) * transform;
 
 			if (GetAsyncKeyState('I'))
-				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f - deltaTime) }) * transform;
+				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f - deltaTime) }) * transform;
 			if (GetAsyncKeyState('K'))
-				transform = Math3D2::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f + deltaTime) }) * transform;
+				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f + deltaTime) }) * transform;
 		}
 		else
 		{
 			if (GetAsyncKeyState('J'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
+				transform = Math3D::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
 			if (GetAsyncKeyState('L'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ (float)(+deltaTime), 0.0f, 0.0f }) * transform;
+				transform = Math3D::Mat4::GetTranslateMatrix({ (float)(+deltaTime), 0.0f, 0.0f }) * transform;
 
 			if (GetAsyncKeyState('U'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
+				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
 			if (GetAsyncKeyState('O'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, (float)(+deltaTime), 0.0f }) * transform;
+				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, (float)(+deltaTime), 0.0f }) * transform;
 
 			if (GetAsyncKeyState('I'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
+				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
 			if (GetAsyncKeyState('K'))
-				transform = Math3D2::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(+deltaTime) }) * transform;
+				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(+deltaTime) }) * transform;
 		}
 
 		modelMatricesData[0] = transform;
@@ -1066,8 +1150,11 @@ void GpuController::ShutDown()
 		vkDestroyPipeline(device->handle, graphicsPipelines[iPipeline], nullptr);
 
 	// Shader Module
-	vkDestroyShaderModule(device->handle, fragmentShaderModule, nullptr);
-	vkDestroyShaderModule(device->handle, vertexShaderModule, nullptr);
+	vkDestroyShaderModule(device->handle, vertexTextShaderModule, nullptr);
+	vkDestroyShaderModule(device->handle, geometryTextShaderModule, nullptr);
+	vkDestroyShaderModule(device->handle, fragmentTextShaderModule, nullptr);
+	vkDestroyShaderModule(device->handle, vertexParallaxOcclusionShaderModule, nullptr);
+	vkDestroyShaderModule(device->handle, fragmentParallaxOcclusionShaderModule, nullptr);
 
 	// PipelineLayout
 	vkDestroyPipelineLayout(device->handle, mvpPush4Vert4FragPipelineLayout, nullptr);

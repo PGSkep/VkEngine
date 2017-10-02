@@ -281,7 +281,7 @@ private:
 	static std::vector<KEYS>* activeKeys;
 
 public:
-	void Init()
+	static void Init()
 	{
 		bool keyState;
 		for (uint16_t i = 0; i != 256; ++i)
@@ -303,7 +303,7 @@ public:
 		mousePosition[0] = (uint16_t)mousePos.x;
 		mousePosition[1] = (uint16_t)mousePos.y;
 	}
-	void Update()
+	static void Update()
 	{
 		bool keyState;
 		if (activeKeys == nullptr)
@@ -379,25 +379,25 @@ public:
 		mousePosition[1] = (uint16_t)mousePos.y;
 	}
 	
-	INPUT_STATE GetKeyInputState(uint8_t _key)
+	static INPUT_STATE GetKeyInputState(uint8_t _key)
 	{
 		return inputPressData[_key];
 	}
 	
-	uint32_t GetMousePositionX()
+	static uint32_t GetMousePositionX()
 	{
 		return mousePosition[0];
 	}
-	uint32_t GetMousePositionY()
+	static uint32_t GetMousePositionY()
 	{
 		return mousePosition[1];
 	}
 
-	int32_t GetMouseDeltaX()
+	static int32_t GetMouseDeltaX()
 	{
 		return mouseDelta[0];
 	}
-	int32_t GetMouseDeltaY()
+	static int32_t GetMouseDeltaY()
 	{
 		return mouseDelta[1];
 	}
@@ -407,10 +407,5 @@ public:
 		activeKeys = _activeKeys;
 	}
 };
-
-Input::INPUT_STATE Input::inputPressData[256];
-uint32_t Input::mousePosition[2];
-int32_t Input::mouseDelta[2];
-std::vector<Input::KEYS>* Input::activeKeys = nullptr;
 
 #endif

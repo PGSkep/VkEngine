@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Resource Files\Tessalation">
-      <UniqueIdentifier>{5ae2c958-b266-4efc-bcfd-cb38c1d2a831}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Gpu.h">
@@ -53,11 +50,8 @@
     <None Include="Shaders\shader.vert">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="Shaders\shader.tesc">
-      <Filter>Resource Files\Tessalation</Filter>
-    </None>
-    <None Include="Shaders\shader.tese">
-      <Filter>Resource Files\Tessalation</Filter>
+    <None Include="Shaders\shader.geom">
+      <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -77,6 +71,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Scene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Input.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

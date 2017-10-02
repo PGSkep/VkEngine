@@ -11,8 +11,20 @@
 #include <math.h>
 #include <vcruntime_string.h>
 
-namespace Math3D2
+namespace Math3D
 {
+	struct Vec2
+	{
+		float x, y;
+
+		Vec2() {};
+		Vec2(float _x, float _y)
+		{
+			x = _x;
+			y = _y;
+		};
+	};
+
 	struct Vec3
 	{
 		float x, y, z;
@@ -236,11 +248,11 @@ namespace Math3D2
 		}
 		static Mat4 GetLookAt(Vec3 _origin, Vec3 _target, Vec3 _up)
 		{
-			Math3D2::Mat4 mat;
+			Mat4 mat;
 
-			const Vec3 front(Math3D2::Vec3::Normalize(_target - _origin));
-			const Vec3 side(Math3D2::Vec3::Normalize(Math3D2::Vec3::Cross(front, _up)));
-			const Vec3 up(Math3D2::Vec3::Cross(side, front));
+			const Vec3 front(Vec3::Normalize(_target - _origin));
+			const Vec3 side(Vec3::Normalize(Vec3::Cross(front, _up)));
+			const Vec3 up(Vec3::Cross(side, front));
 
 			mat.xw = 0.0f;
 			mat.yw = 0.0f;
@@ -256,15 +268,15 @@ namespace Math3D2
 			mat.zx = side.z;
 			mat.zy = up.z;
 			mat.zz = -front.z;
-			mat.wx = -Math3D2::Vec3::Dot(side, _origin);
-			mat.wy = -Math3D2::Vec3::Dot(up, _origin);
-			mat.wz = Math3D2::Vec3::Dot(front, _origin);
+			mat.wx = -Vec3::Dot(side, _origin);
+			mat.wy = -Vec3::Dot(up, _origin);
+			mat.wz = Vec3::Dot(front, _origin);
 
 			return mat;
 		}
 		static Mat4 GetPerspectiveProjection(const float _fov, const float _width, const float _height, const float _near, const float _far)
 		{
-			Math3D2::Mat4 mat;
+			Mat4 mat;
 
 			float aspect = _width / _height;
 			if (aspect < 0.0f)
