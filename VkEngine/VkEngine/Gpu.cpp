@@ -49,6 +49,7 @@ void Gpu::Init()
 		features.fillModeNonSolid = VK_TRUE;
 		features.multiViewport = VK_TRUE;
 		features.tessellationShader = VK_TRUE;
+		features.geometryShader = VK_TRUE;
 
 		VkU::CreateDeviceInfo createDeviceInfo;
 		createDeviceInfo.instance = &instance;

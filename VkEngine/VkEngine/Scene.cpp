@@ -8,17 +8,19 @@ void Scene::Init()
 
 	view = Math3D::Mat4::GetLookAt(cameraPosition, cameraTarget, cameraUp);
 
-	Text2D text;
-	text.angle = 0.0f;
-	text.centerOffset = { 0.0f, 0.0f };
-	text.position = { 0.0f, 0.0f };
-	text.scale = { 1.0f, 1.0f };
-	text.text = "Hello World! 123...?";
+	VkS::Text2D text;
+	text.position = { -0.99f, -0.98f };
+	text.scale = { 0.02f, 0.02f };
+	text.spacing = { 0.04f, 0.1f };
+	text.color = { 0.0f, 0.0f, 0.0f, 0.0f };
+	text.text = "Hello World!\n0123...?";
 	texts2D.push_back(text);
 }
 
-void Scene::Update()
+void Scene::Update(float _deltaTime)
 {
+	texts2D[0].text = "FPS = ";
+	texts2D[0].text += std::to_string((uint64_t)(1.0f / _deltaTime));
 }
 
 void Scene::ShutDown()

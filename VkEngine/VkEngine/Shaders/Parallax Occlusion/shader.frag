@@ -60,7 +60,7 @@ void main()
 	vec3 ambient = 0.2 * color;
 	vec3 diffuse = max(dot(L, N), 0.0) * color;
 	vec3 specular = vec3(0.15) * pow(max(dot(N, H), 0.0), 32.0);
-
+	
 	outColor = vec4(ambient + diffuse + specular, 1.0f);
 	return;
 }

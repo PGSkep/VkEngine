@@ -35,8 +35,10 @@ class GpuController
 
 	VkDescriptorSetLayout mvpDescriptorSetLayout;
 	VkDescriptorSetLayout diffuseNormalDescriptorSetLayout;
+	VkDescriptorSetLayout fontDescriptorSetLayout;
 
-	VkPipelineLayout mvpPush4Vert4FragPipelineLayout;
+	VkPipelineLayout mvpPush8Vert8FragPipelineLayout;
+	VkPipelineLayout push16Vert16Frag16GeomPipelineLayout;
 
 	VkShaderModule vertexTextShaderModule;
 	VkShaderModule geometryTextShaderModule;
@@ -65,13 +67,15 @@ class GpuController
 	VkS::Texture fontTexture;
 	VkS::Texture rocksDiffuseTexture;
 	VkS::Texture rocksNormalTexture;
-	
-	VkSampler sampler;
+
+	VkSampler nearestSampler;
+	VkSampler linearSampler;
 	
 	VkDescriptorPool descriptorPool;
 	
 	VkDescriptorSet mvpDescriptorSet;
 	VkDescriptorSet diffuseNormalDescriptorSet;
+	VkDescriptorSet fontDescriptorSet;
 
 public:
 	void Init(VkS::Device* _device);

@@ -199,6 +199,62 @@ namespace VkS
 		};
 		std::vector<QueueGroup> queueGroups;
 	};
+
+	// Other
+	struct Text2D
+	{
+		Math3D::Vec2 position;
+		Math3D::Vec2 scale;
+		Math3D::Vec2 spacing;
+		Math3D::Vec4 color;
+
+		std::string text;
+
+		void Render(VkCommandBuffer _commandBuffer, VkPipeline _pipeline, VkPipelineLayout _pipelineLayout, std::vector<VkDescriptorSet> _descriptorSets)
+		{
+			vkCmdBindPipeline(_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline);
+
+			vkCmdBindDescriptorSets(_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipelineLayout, 0, (uint32_t)_descriptorSets.size(), _descriptorSets.data(), 0, nullptr);
+
+			struct TextVertexPushConstantData
+			{
+				Math3D::Vec2 position;
+				Math3D::Vec2 size;
+			} textVertexPushConstantData;
+			Math3D::Vec4 uv;
+			Math3D::Vec4 color;
+
+			float xPos = 0.0f;
+			float yPos = 0.0f;
+			for (size_t iText = 0; text[iText] != '\0'; ++iText)
+			{
+				if (text[iText] == '\n')
+				{
+					xPos = 0.0f;
+					yPos += spacing.y;
+					continue;
+				}
+				textVertexPushConstantData.position = { 
+					position.x + xPos,
+					position.y + yPos };
+				textVertexPushConstantData.size = scale;
+				uv = {
+					(float)(text[iText] % 16) / 16,
+					(float)(text[iText] / 16) / 16,
+					(float)(text[iText] % 16) / 16 + 1.0f/16.0f,
+					(float)(text[iText] / 16) / 16 + 1.0f/16.0f };
+				color = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+				vkCmdPushConstants(_commandBuffer, _pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TextVertexPushConstantData), &textVertexPushConstantData);
+				vkCmdPushConstants(_commandBuffer, _pipelineLayout, VK_SHADER_STAGE_GEOMETRY_BIT, 16, sizeof(Math3D::Vec4), &uv);
+				vkCmdPushConstants(_commandBuffer, _pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 32, sizeof(Math3D::Vec4), &color);
+
+				vkCmdDraw(_commandBuffer, 1, 1, 0, 0);
+
+				xPos += spacing.x;
+			}
+		}
+	};
 }
 
 namespace VkD
@@ -416,6 +472,12 @@ namespace VkA
 #if _DEBUG
 	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugReportCallback(VkDebugReportFlagsEXT _flags, VkDebugReportObjectTypeEXT _objType, uint64_t _obj, size_t _location, int32_t _code, const char* _layerPrefix, const char* _msg, void* _userData)
 	{
+		// ignore following messages
+		{
+			if(_flags == 4 && _objType == 23 && _location == 5456 && _code == 0)
+				return VK_FALSE;
+		}
+
 		enum COLORS
 		{
 			BLACK = 0,

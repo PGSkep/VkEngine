@@ -6,6 +6,8 @@
 #define DIFFUSE_COMBINED_IMAGE_SAMPLER_BINDING 0
 #define NORMAL_COMBINED_IMAGE_SAMPLER_BINDING 1
 
+#define FONT_COMBINED_IMAGE_SAMPLER_BINDING 0
+
 #define STAGING_BUFFER_SIZE 110208
 
 void GpuController::Init(VkS::Device* _device)
@@ -175,16 +177,28 @@ void GpuController::Init(VkS::Device* _device)
 		descriptorSetLayoutCreateInfo.bindingCount = (uint32_t)descriptorSetLayoutBindings.size();
 		descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
 		VkU::vkApiResult = vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, nullptr, &diffuseNormalDescriptorSetLayout);
+
+		descriptorSetLayoutBindings.clear();
+		descriptorSetLayoutBindings.resize(1);
+		// font
+		descriptorSetLayoutBindings[0].binding = FONT_COMBINED_IMAGE_SAMPLER_BINDING;
+		descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorSetLayoutBindings[0].descriptorCount = 1;
+		descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		descriptorSetLayoutBindings[0].pImmutableSamplers = nullptr;
+
+		descriptorSetLayoutCreateInfo.bindingCount = (uint32_t)descriptorSetLayoutBindings.size();
+		descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
+		VkU::vkApiResult = vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, nullptr, &fontDescriptorSetLayout);
 	}
 
 	// PipelineLayout
 	{
+		// Parallax Occlusion
 		std::vector<VkPushConstantRange> pushConstantRanges(2);
-		// vertex 0~4
 		pushConstantRanges[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 		pushConstantRanges[0].offset = 0;
 		pushConstantRanges[0].size = sizeof(float) * 2;
-		// fragment 4~8
 		pushConstantRanges[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		pushConstantRanges[1].offset = sizeof(float) * 2;
 		pushConstantRanges[1].size = sizeof(float) * 2;
@@ -200,7 +214,32 @@ void GpuController::Init(VkS::Device* _device)
 		pipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstantRanges.size();
 		pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
 
-		VkU::vkApiResult = vkCreatePipelineLayout(device->handle, &pipelineLayoutCreateInfo, nullptr, &mvpPush4Vert4FragPipelineLayout);
+		VkU::vkApiResult = vkCreatePipelineLayout(device->handle, &pipelineLayoutCreateInfo, nullptr, &mvpPush8Vert8FragPipelineLayout);
+
+		// Text
+		pushConstantRanges.clear();
+		pushConstantRanges.resize(3);
+		pushConstantRanges[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		pushConstantRanges[0].offset = 0;
+		pushConstantRanges[0].size = sizeof(float) * 4;
+
+		pushConstantRanges[1].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
+		pushConstantRanges[1].offset = sizeof(float) * 4;
+		pushConstantRanges[1].size = sizeof(float) * 4;
+
+		pushConstantRanges[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		pushConstantRanges[2].offset = sizeof(float) * 8;
+		pushConstantRanges[2].size = sizeof(float) * 4;
+
+		descriptorSetLayouts.clear();
+		descriptorSetLayouts = { fontDescriptorSetLayout };
+
+		pipelineLayoutCreateInfo.setLayoutCount = (uint32_t)descriptorSetLayouts.size();
+		pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
+		pipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstantRanges.size();
+		pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
+
+		VkU::vkApiResult = vkCreatePipelineLayout(device->handle, &pipelineLayoutCreateInfo, nullptr, &push16Vert16Frag16GeomPipelineLayout);
 	}
 
 	// Shader Modules
@@ -277,7 +316,7 @@ void GpuController::Init(VkS::Device* _device)
 
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].binding = 0;
-			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV));
+			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].stride = 0;
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].binding = 0;
@@ -285,7 +324,7 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			
 			pipelineData.vertexInputAttributeDescriptions.resize(2);
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV));
+			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_NONE));
 			pipelineData.vertexInputAttributeDescriptions[1].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
 
 			// Text?
@@ -310,12 +349,20 @@ void GpuController::Init(VkS::Device* _device)
 
 		// Input Assembly
 		{
-			pipelineData.pipelineInputAssemblyStateCreateInfos.resize(1);
+			pipelineData.pipelineInputAssemblyStateCreateInfos.resize(2);
+			// Text
 			pipelineData.pipelineInputAssemblyStateCreateInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 			pipelineData.pipelineInputAssemblyStateCreateInfos[0].pNext = nullptr;
 			pipelineData.pipelineInputAssemblyStateCreateInfos[0].flags = VK_RESERVED_FOR_FUTURE_USE;
-			pipelineData.pipelineInputAssemblyStateCreateInfos[0].topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			pipelineData.pipelineInputAssemblyStateCreateInfos[0].topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 			pipelineData.pipelineInputAssemblyStateCreateInfos[0].primitiveRestartEnable = VK_FALSE;
+
+			// Parallax Occlusion
+			pipelineData.pipelineInputAssemblyStateCreateInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			pipelineData.pipelineInputAssemblyStateCreateInfos[1].pNext = nullptr;
+			pipelineData.pipelineInputAssemblyStateCreateInfos[1].flags = VK_RESERVED_FOR_FUTURE_USE;
+			pipelineData.pipelineInputAssemblyStateCreateInfos[1].topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			pipelineData.pipelineInputAssemblyStateCreateInfos[1].primitiveRestartEnable = VK_FALSE;
 		}
 
 		// Tessalation
@@ -378,7 +425,7 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.pipelineRasterizationStateCreateInfos[1].depthClampEnable = VK_FALSE;
 			pipelineData.pipelineRasterizationStateCreateInfos[1].rasterizerDiscardEnable = VK_FALSE;
 			pipelineData.pipelineRasterizationStateCreateInfos[1].polygonMode = VK_POLYGON_MODE_LINE;
-			pipelineData.pipelineRasterizationStateCreateInfos[1].cullMode = VK_CULL_MODE_NONE;
+			pipelineData.pipelineRasterizationStateCreateInfos[1].cullMode = VK_CULL_MODE_BACK_BIT;
 			pipelineData.pipelineRasterizationStateCreateInfos[1].frontFace = VK_FRONT_FACE_CLOCKWISE;
 			pipelineData.pipelineRasterizationStateCreateInfos[1].depthBiasEnable = VK_FALSE;
 			pipelineData.pipelineRasterizationStateCreateInfos[1].depthBiasConstantFactor = 0.0f;
@@ -458,7 +505,7 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[0].flags = 0;
 			graphicsPipelineCreateInfos[0].stageCount = (uint32_t)pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.size();
 			graphicsPipelineCreateInfos[0].pStages = pipelineData.shaderStageCreateInfos[0].shaderStageCreateInfo.data();
-			graphicsPipelineCreateInfos[0].pVertexInputState = &pipelineData.pipelineVertexInputStateCreateInfos[1];
+			graphicsPipelineCreateInfos[0].pVertexInputState = &pipelineData.pipelineVertexInputStateCreateInfos[0];
 			graphicsPipelineCreateInfos[0].pInputAssemblyState = &pipelineData.pipelineInputAssemblyStateCreateInfos[0];
 			graphicsPipelineCreateInfos[0].pTessellationState = &pipelineData.pipelineTessellationStateCreateInfo[0];
 			graphicsPipelineCreateInfos[0].pViewportState = &pipelineData.pipelineViewportStateCreateInfos[0];
@@ -467,7 +514,7 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[0].pDepthStencilState = &pipelineData.pipelineDepthStencilStateCreateInfos[0];
 			graphicsPipelineCreateInfos[0].pColorBlendState = &pipelineData.pipelineColorBlendStateCreateInfos[0];
 			graphicsPipelineCreateInfos[0].pDynamicState = nullptr;
-			graphicsPipelineCreateInfos[0].layout = mvpPush4Vert4FragPipelineLayout;
+			graphicsPipelineCreateInfos[0].layout = push16Vert16Frag16GeomPipelineLayout;
 			graphicsPipelineCreateInfos[0].renderPass = renderPass;
 			graphicsPipelineCreateInfos[0].subpass = 0;
 			graphicsPipelineCreateInfos[0].basePipelineHandle = VK_NULL_HANDLE;
@@ -480,7 +527,7 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[1].stageCount = (uint32_t)pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo.size();
 			graphicsPipelineCreateInfos[1].pStages = pipelineData.shaderStageCreateInfos[1].shaderStageCreateInfo.data();
 			graphicsPipelineCreateInfos[1].pVertexInputState = &pipelineData.pipelineVertexInputStateCreateInfos[1];
-			graphicsPipelineCreateInfos[1].pInputAssemblyState = &pipelineData.pipelineInputAssemblyStateCreateInfos[0];
+			graphicsPipelineCreateInfos[1].pInputAssemblyState = &pipelineData.pipelineInputAssemblyStateCreateInfos[1];
 			graphicsPipelineCreateInfos[1].pTessellationState = &pipelineData.pipelineTessellationStateCreateInfo[0];
 			graphicsPipelineCreateInfos[1].pViewportState = &pipelineData.pipelineViewportStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pRasterizationState = &pipelineData.pipelineRasterizationStateCreateInfos[0];
@@ -488,7 +535,7 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[1].pDepthStencilState = &pipelineData.pipelineDepthStencilStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pColorBlendState = &pipelineData.pipelineColorBlendStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pDynamicState = nullptr;
-			graphicsPipelineCreateInfos[1].layout = mvpPush4Vert4FragPipelineLayout;
+			graphicsPipelineCreateInfos[1].layout = mvpPush8Vert8FragPipelineLayout;
 			graphicsPipelineCreateInfos[1].renderPass = renderPass;
 			graphicsPipelineCreateInfos[1].subpass = 0;
 			graphicsPipelineCreateInfos[1].basePipelineHandle = VK_NULL_HANDLE;
@@ -500,9 +547,8 @@ void GpuController::Init(VkS::Device* _device)
 	{}
 	{
 		graphicsPipelines.resize(graphicsPipelineCreateInfos.size());
-		//vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, graphicsPipelines.data());
-		vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, (uint32_t)1, &graphicsPipelineCreateInfos[1], nullptr, &graphicsPipelines[1]);
-
+		vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, graphicsPipelines.data());
+		
 		textPipeline = graphicsPipelines[0];
 		parallaxOcclusionPipeline = graphicsPipelines[1];
 	}
@@ -660,7 +706,7 @@ void GpuController::Init(VkS::Device* _device)
 		createTextureInfo2.setupQueue = graphicsQueue;
 
 		// Font
-		textureData.LoadTGA("Textures/font.tga");
+		textureData.LoadTGA("Textures/font2.tga");
 		VkA::CreateTexture2(fontTexture, createTextureInfo2);
 
 		// Diffuse
@@ -695,7 +741,11 @@ void GpuController::Init(VkS::Device* _device)
 		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
-		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &sampler);
+		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &nearestSampler);
+
+		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &linearSampler);
 	}
 
 	// DescriptorPool
@@ -704,13 +754,13 @@ void GpuController::Init(VkS::Device* _device)
 		descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorPoolSizes[0].descriptorCount = 2;
 		descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorPoolSizes[1].descriptorCount = 2;
+		descriptorPoolSizes[1].descriptorCount = 3;
 
 		VkDescriptorPoolCreateInfo descriptorPoolCreateInfo;
 		descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		descriptorPoolCreateInfo.pNext = nullptr;
 		descriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		descriptorPoolCreateInfo.maxSets = 2;
+		descriptorPoolCreateInfo.maxSets = 3;
 		descriptorPoolCreateInfo.poolSizeCount = (uint32_t)descriptorPoolSizes.size();
 		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
 
@@ -722,10 +772,12 @@ void GpuController::Init(VkS::Device* _device)
 		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {
 			mvpDescriptorSetLayout,
 			diffuseNormalDescriptorSetLayout,
+			fontDescriptorSetLayout,
 		};
 		std::vector<VkDescriptorSet> descriptorSets = {
 			mvpDescriptorSet,
 			diffuseNormalDescriptorSet,
+			fontDescriptorSet,
 		};
 
 		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
@@ -739,11 +791,12 @@ void GpuController::Init(VkS::Device* _device)
 
 		mvpDescriptorSet = descriptorSets[0];
 		diffuseNormalDescriptorSet = descriptorSets[1];
+		fontDescriptorSet = descriptorSets[2];
 	}
 
 	// UpdateDescriptorSets
 	{
-		std::vector<VkWriteDescriptorSet> writeDescriptorSet(4);
+		std::vector<VkWriteDescriptorSet> writeDescriptorSet(5);
 
 		// View Projection
 		VkDescriptorBufferInfo viewProjectionDescriptorBufferInfo;
@@ -781,7 +834,7 @@ void GpuController::Init(VkS::Device* _device)
 
 		// Diffuse texture
 		VkDescriptorImageInfo diffuseDescriptorImageInfo;
-		diffuseDescriptorImageInfo.sampler = sampler;
+		diffuseDescriptorImageInfo.sampler = linearSampler;
 		diffuseDescriptorImageInfo.imageView = rocksDiffuseTexture.view;
 		diffuseDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -798,7 +851,7 @@ void GpuController::Init(VkS::Device* _device)
 
 		// Normal texture
 		VkDescriptorImageInfo normalDescriptorImageInfo;
-		normalDescriptorImageInfo.sampler = sampler;
+		normalDescriptorImageInfo.sampler = linearSampler;
 		normalDescriptorImageInfo.imageView = rocksNormalTexture.view;
 		normalDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -813,15 +866,33 @@ void GpuController::Init(VkS::Device* _device)
 		writeDescriptorSet[3].pBufferInfo = nullptr;
 		writeDescriptorSet[3].pTexelBufferView = nullptr;
 
+		// Font texture
+		VkDescriptorImageInfo fontDescriptorImageInfo;
+		fontDescriptorImageInfo.sampler = linearSampler;
+		fontDescriptorImageInfo.imageView = fontTexture.view;
+		fontDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		writeDescriptorSet[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet[4].pNext = nullptr;
+		writeDescriptorSet[4].dstSet = fontDescriptorSet;
+		writeDescriptorSet[4].dstBinding = FONT_COMBINED_IMAGE_SAMPLER_BINDING;
+		writeDescriptorSet[4].dstArrayElement = 0;
+		writeDescriptorSet[4].descriptorCount = 1;
+		writeDescriptorSet[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescriptorSet[4].pImageInfo = &fontDescriptorImageInfo;
+		writeDescriptorSet[4].pBufferInfo = nullptr;
+		writeDescriptorSet[4].pTexelBufferView = nullptr;
+
 		vkUpdateDescriptorSets(device->handle, (uint32_t)writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
 	}
 }
 void GpuController::Run()
 {
 	Input::Update();
+	scene.Update((float)deltaTime);
 
 	double newTime = timer.GetTime();
-	deltaTime = lastTime - newTime;
+	deltaTime = newTime - lastTime;
 	lastTime = newTime;
 
 	// Draw o secondary command buffer
@@ -850,44 +921,42 @@ void GpuController::Run()
 
 		VkDeviceSize offset = 0;
 
-		struct VertexShaderPushConstantData
-		{
-			uint32_t modelMatrixIndex = 0;
-			float time = 0.0f;
-		} vertexShaderPushConstantData;
-		vertexShaderPushConstantData.time = (float)timer.GetTime();
-		
-		struct FragmentShaderPushConstantData
-		{
-			float heightScale = 0.1f;
-			float numLayers = 32.0f;
-		};
-		
-		static FragmentShaderPushConstantData fragmentShaderPushConstantData;
-
-		if (!Input::GetKeyInputState(Input::KEY_SHIFT) == Input::INPUT_STATE_IDLE)
-		{
-			if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
-				fragmentShaderPushConstantData.heightScale -= 0.1f * deltaTime;
-			if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
-				fragmentShaderPushConstantData.heightScale += 0.1f * deltaTime;
-		}
-		else
-		{
-			if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
-				fragmentShaderPushConstantData.numLayers -= 2.0f * deltaTime;
-			if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
-				fragmentShaderPushConstantData.numLayers += 2.0f * deltaTime;
-		}
-
 		{
 			// parallax occlusion
 			vkCmdBindPipeline(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, parallaxOcclusionPipeline);
 			std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseNormalDescriptorSet };
-			vkCmdBindDescriptorSets(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush4Vert4FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+			vkCmdBindDescriptorSets(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush8Vert8FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
-			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush4Vert4FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VertexShaderPushConstantData), &vertexShaderPushConstantData);
-			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush4Vert4FragPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(VertexShaderPushConstantData), sizeof(FragmentShaderPushConstantData), &fragmentShaderPushConstantData);
+			struct ParallaxOcclusionVertexShaderPushConstantData
+			{
+				uint32_t modelMatrixIndex = 0;
+				float time = 0.0f;
+			} parallaxOcclusionVertexShaderPushConstantData;
+			parallaxOcclusionVertexShaderPushConstantData.time = (float)timer.GetTime();
+
+			struct ParallaxOcclusionFragmentShaderPushConstantData
+			{
+				float heightScale = 0.1f;
+				float numLayers = 32.0f;
+			};
+			static ParallaxOcclusionFragmentShaderPushConstantData parallaxOcclusionFragmentShaderPushConstantData;
+
+			if (!Input::GetKeyInputState(Input::KEY_SHIFT) == Input::INPUT_STATE_IDLE)
+			{
+				if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
+					parallaxOcclusionFragmentShaderPushConstantData.heightScale += 0.1f * (float)deltaTime;
+				if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
+					parallaxOcclusionFragmentShaderPushConstantData.heightScale -= 0.1f * (float)deltaTime;
+			}
+			else
+			{
+				if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
+					parallaxOcclusionFragmentShaderPushConstantData.numLayers += 2.0f * (float)deltaTime;
+				if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
+					parallaxOcclusionFragmentShaderPushConstantData.numLayers -= 2.0f * (float)deltaTime;
+			}
+			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ParallaxOcclusionVertexShaderPushConstantData), &parallaxOcclusionVertexShaderPushConstantData);
+			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(ParallaxOcclusionVertexShaderPushConstantData), sizeof(ParallaxOcclusionFragmentShaderPushConstantData), &parallaxOcclusionFragmentShaderPushConstantData);
 
 			vkCmdBindVertexBuffers(window->secondaryCommandBuffers[window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
 			vkCmdBindIndexBuffer(window->secondaryCommandBuffers[window->imageIndex], indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
@@ -895,6 +964,8 @@ void GpuController::Run()
 			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], indexCount, 1, 0, 0, 0);
 
 			// text
+			for(size_t iTexts = 0; iTexts != scene.texts2D.size(); ++iTexts)
+				scene.texts2D[iTexts].Render(window->secondaryCommandBuffers[window->imageIndex], textPipeline, push16Vert16Frag16GeomPipelineLayout, { fontDescriptorSet });
 		}
 
 		vkEndCommandBuffer(window->secondaryCommandBuffers[window->imageIndex]);
@@ -914,19 +985,19 @@ void GpuController::Run()
 	// Update camera
 	{
 		if (GetAsyncKeyState('A'))
-			scene.cameraPosition.x -= (float)(deltaTime);
-		if (GetAsyncKeyState('D'))
 			scene.cameraPosition.x += (float)(deltaTime);
+		if (GetAsyncKeyState('D'))
+			scene.cameraPosition.x -= (float)(deltaTime);
 
 		if (GetAsyncKeyState('Q'))
-			scene.cameraPosition.y -= (float)(deltaTime);
-		if (GetAsyncKeyState('E'))
 			scene.cameraPosition.y += (float)(deltaTime);
+		if (GetAsyncKeyState('E'))
+			scene.cameraPosition.y -= (float)(deltaTime);
 
 		if (GetAsyncKeyState('W'))
-			scene.cameraPosition.z -= (float)(deltaTime);
-		if (GetAsyncKeyState('S'))
 			scene.cameraPosition.z += (float)(deltaTime);
+		if (GetAsyncKeyState('S'))
+			scene.cameraPosition.z -= (float)(deltaTime);
 
 		scene.view = Math3D::Mat4::GetLookAt(scene.cameraPosition, scene.cameraTarget, scene.cameraUp);
 
@@ -934,16 +1005,6 @@ void GpuController::Run()
 	}
 
 	Math3D::Vec3 cameraPosition = Math3D::Mat4::ExtractPosition(viewProjectionData[0]);
-
-	//system("cls");
-	//
-	//std::cout
-	//	<< "\nXX = " << cameraPosition.x << "	XY = " << cameraPosition.y << "	XZ = " << cameraPosition.z << "\n\n";
-	//std::cout
-	//	<< "\nXX = " << viewProjectionData[0].xx << "	XY = " << viewProjectionData[0].xy << "	XZ = " << viewProjectionData[0].xz << "	XW = " << viewProjectionData[0].xw
-	//	<< "\nYX = " << viewProjectionData[0].yx << "	YY = " << viewProjectionData[0].yy << "	YZ = " << viewProjectionData[0].yz << "	YW = " << viewProjectionData[0].yw
-	//	<< "\nZX = " << viewProjectionData[0].zx << "	ZY = " << viewProjectionData[0].zy << "	ZZ = " << viewProjectionData[0].zz << "	ZW = " << viewProjectionData[0].zw
-	//	<< "\nWX = " << viewProjectionData[0].wx << "	WY = " << viewProjectionData[0].wy << "	WZ = " << viewProjectionData[0].wz << "	WW = " << viewProjectionData[0].ww;
 
 	// Update model
 	{
@@ -957,48 +1018,48 @@ void GpuController::Run()
 				transform = Math3D::Mat4::GetRotateZMatrix((float)(+deltaTime)) * transform;
 
 			if (GetAsyncKeyState('U'))
-				transform = Math3D::Mat4::GetRotateYMatrix((float)(-deltaTime)) * transform;
-			if (GetAsyncKeyState('O'))
 				transform = Math3D::Mat4::GetRotateYMatrix((float)(+deltaTime)) * transform;
+			if (GetAsyncKeyState('O'))
+				transform = Math3D::Mat4::GetRotateYMatrix((float)(-deltaTime)) * transform;
 
 			if (GetAsyncKeyState('I'))
-				transform = Math3D::Mat4::GetRotateXMatrix((float)(-deltaTime)) * transform;
-			if (GetAsyncKeyState('K'))
 				transform = Math3D::Mat4::GetRotateXMatrix((float)(+deltaTime)) * transform;
+			if (GetAsyncKeyState('K'))
+				transform = Math3D::Mat4::GetRotateXMatrix((float)(-deltaTime)) * transform;
 		}
 		else if (GetAsyncKeyState(VK_CONTROL))
 		{
 			if (GetAsyncKeyState('J'))
-				transform = Math3D::Mat4::GetScaleMatrix({ (float)(1.0f - deltaTime), 1.0f, 1.0f }) * transform;
-			if (GetAsyncKeyState('L'))
 				transform = Math3D::Mat4::GetScaleMatrix({ (float)(1.0f + deltaTime), 1.0f, 1.0f }) * transform;
+			if (GetAsyncKeyState('L'))
+				transform = Math3D::Mat4::GetScaleMatrix({ (float)(1.0f - deltaTime), 1.0f, 1.0f }) * transform;
 
 			if (GetAsyncKeyState('U'))
-				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f - deltaTime), 1.0f }) * transform;
-			if (GetAsyncKeyState('O'))
 				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f + deltaTime), 1.0f }) * transform;
+			if (GetAsyncKeyState('O'))
+				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f - deltaTime), 1.0f }) * transform;
 
 			if (GetAsyncKeyState('I'))
-				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f - deltaTime) }) * transform;
-			if (GetAsyncKeyState('K'))
 				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f + deltaTime) }) * transform;
+			if (GetAsyncKeyState('K'))
+				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f - deltaTime) }) * transform;
 		}
 		else
 		{
 			if (GetAsyncKeyState('J'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
-			if (GetAsyncKeyState('L'))
 				transform = Math3D::Mat4::GetTranslateMatrix({ (float)(+deltaTime), 0.0f, 0.0f }) * transform;
+			if (GetAsyncKeyState('L'))
+				transform = Math3D::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
 
 			if (GetAsyncKeyState('U'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
-			if (GetAsyncKeyState('O'))
 				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, (float)(+deltaTime), 0.0f }) * transform;
+			if (GetAsyncKeyState('O'))
+				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
 
 			if (GetAsyncKeyState('I'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
-			if (GetAsyncKeyState('K'))
 				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(+deltaTime) }) * transform;
+			if (GetAsyncKeyState('K'))
+				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
 		}
 
 		modelMatricesData[0] = transform;
@@ -1113,7 +1174,8 @@ void GpuController::ShutDown()
 	vkDestroyDescriptorPool(device->handle, descriptorPool, nullptr);
 
 	// Sampler
-	vkDestroySampler(device->handle, sampler, nullptr);
+	vkDestroySampler(device->handle, nearestSampler, nullptr);
+	vkDestroySampler(device->handle, linearSampler, nullptr);
 
 	// Textures
 	vkDestroyImageView(device->handle, fontTexture.view, nullptr);
@@ -1157,9 +1219,11 @@ void GpuController::ShutDown()
 	vkDestroyShaderModule(device->handle, fragmentParallaxOcclusionShaderModule, nullptr);
 
 	// PipelineLayout
-	vkDestroyPipelineLayout(device->handle, mvpPush4Vert4FragPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(device->handle, mvpPush8Vert8FragPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(device->handle, push16Vert16Frag16GeomPipelineLayout, nullptr);
 
 	// DescriptorSetLayout
+	vkDestroyDescriptorSetLayout(device->handle, fontDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device->handle, diffuseNormalDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device->handle, mvpDescriptorSetLayout, nullptr);
 

@@ -4,38 +4,46 @@
 layout (points) in;
 layout (triangle_strip, max_vertices = 6) out;
 
-layout(location = 0) in vec2[] inSize;
-layout(location = 1) in vec2[] inTexCoord;
-layout(location = 2) in vec4[] inColor;
+layout(push_constant) uniform PushConstants
+{
+	layout(offset = 16)
+	vec4 texCoord;
+} pushConstants;
+
+layout(location = 0) in vec2[] inPosition;
+layout(location = 1) in vec2[] inSize;
 
 layout(location = 0) out vec2 outTexCoord;
-layout(location = 1) out vec4 outColor;
 
 void main()
 {
-	vec2 center = gl_Position.xy;
 
-	outTexCoord = inTexCoord[0];
-	outColor = inColor[0];
-
-	gl_Position = vec4(center.x - inSize[0].x, center.y - inSize[0].y, 0.0, 1.0);
+	gl_Position = vec4(
+		inPosition[0].x - inSize[0].x, 
+		inPosition[0].y - inSize[0].y, 
+		0.0, 1.0);
+	outTexCoord = pushConstants.texCoord.xy;
 	EmitVertex();
 
-	gl_Position = vec4(center.x + inSize[0].x, center.y - inSize[0].y, 0.0, 1.0);
+	gl_Position = vec4(
+		inPosition[0].x + inSize[0].x,
+		inPosition[0].y - inSize[0].y,
+		0.0, 1.0);
+	outTexCoord = pushConstants.texCoord.zy;
 	EmitVertex();
 
-	gl_Position = vec4(center.x - inSize[0].x, center.y + inSize[0].y, 0.0, 1.0);
+	gl_Position = vec4(
+		inPosition[0].x - inSize[0].x,
+		inPosition[0].y + inSize[0].y,
+		0.0, 1.0);
+	outTexCoord = pushConstants.texCoord.xw;
 	EmitVertex();
 
-	EndPrimitive();
-
-	gl_Position = vec4(center.x + inSize[0].x, center.y - inSize[0].y, 0.0, 1.0);
-	EmitVertex();
-
-	gl_Position = vec4(center.x + inSize[0].x, center.y + inSize[0].y, 0.0, 1.0);
-	EmitVertex();
-
-	gl_Position = vec4(center.x - inSize[0].x, center.y + inSize[0].y, 0.0, 1.0);
+	gl_Position = vec4(
+		inPosition[0].x + inSize[0].x,
+		inPosition[0].y + inSize[0].y,
+		0.0, 1.0);
+	outTexCoord = pushConstants.texCoord.zw;
 	EmitVertex();
 
 	EndPrimitive();
