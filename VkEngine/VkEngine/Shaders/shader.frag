@@ -23,7 +23,7 @@ void main()
 	if(color.a == 0.0)
 		discard;
 
-	vec3 rgb = vec3(0.0f, 0.0f, 0.0f) * (color.a + blending) + vec3(1.0f, 0.0f, 0.0f) * (color.a - blending);
+	vec3 rgb = vec3(0.0f, 0.0f, 0.0f) * (color.a + blending) + vec3(0.0f, 1.0f, 0.0f) * (color.a - blending);
 	float alpha = color.a * hardness;
 
 	outColor = vec4(rgb, alpha);

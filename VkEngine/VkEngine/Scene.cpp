@@ -12,7 +12,7 @@ void Scene::Init()
 	text.position = { -0.90f, -0.85f };
 	text.scale = { 0.05f, 0.06f };
 	text.spacing = { 0.075f, 0.05f };
-	text.color = { 0.0f, 0.0f, 0.0f, 0.0f };
+	text.color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	text.text = "Hello World!\n0123...?";
 	texts2D.push_back(text);
 }

@@ -222,7 +222,6 @@ namespace VkS
 				Math3D::Vec2 size;
 			} textVertexPushConstantData;
 			Math3D::Vec4 uv;
-			Math3D::Vec4 color;
 
 			float xPos = 0.0f;
 			float yPos = 0.0f;
@@ -243,7 +242,6 @@ namespace VkS
 					(float)(text[iText] / 16) / 16,
 					(float)(text[iText] % 16) / 16 + 1.0f/16.0f,
 					(float)(text[iText] / 16) / 16 + 1.0f/16.0f };
-				color = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 				vkCmdPushConstants(_commandBuffer, _pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TextVertexPushConstantData), &textVertexPushConstantData);
 				vkCmdPushConstants(_commandBuffer, _pipelineLayout, VK_SHADER_STAGE_GEOMETRY_BIT, 16, sizeof(Math3D::Vec4), &uv);
