@@ -1,13 +1,6 @@
 #ifndef	MATH_3D_H
 #define MATH_3D_H
 
-//#define RIGHT_HANDED_MATRIX
-
-//#define GLM_FORCE_RADIANS
-//#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-//#include <glm/glm.hpp>
-//#include <glm/gtc/matrix_transform.hpp>
-
 #include <math.h>
 #include <vcruntime_string.h>
 
@@ -318,87 +311,87 @@ namespace Math3D
 /*
 namespace Math3D
 {
-	struct Vec2
-	{
-		float x, y;
-		Vec2();
-		Vec2(float _x, float _y);
-	};
+struct Vec2
+{
+float x, y;
+Vec2();
+Vec2(float _x, float _y);
+};
 
-	struct Vec3
-	{
-		float x, y, z;
-		Vec3();
-		Vec3(float _x, float _y, float _z);
+struct Vec3
+{
+float x, y, z;
+Vec3();
+Vec3(float _x, float _y, float _z);
 
-		Vec3& operator-(const Vec3 _source);
-		Vec3& operator+(const Vec3 _source);
-		Vec3& operator*(const float _source);
-	};
-	// Other
-	float Lenght(const Vec3 _vector);
-	Vec3 Normalize(const Vec3 _vector);
-	Vec3 Cross(const Vec3 _vectorA, const Vec3 _vectorB);
-	float Dot(const Vec3 _vectorA, const Vec3 _vectorB);
-	float Distance(const Vec3 _p1, const Vec3 _p2);
+Vec3& operator-(const Vec3 _source);
+Vec3& operator+(const Vec3 _source);
+Vec3& operator*(const float _source);
+};
+// Other
+float Lenght(const Vec3 _vector);
+Vec3 Normalize(const Vec3 _vector);
+Vec3 Cross(const Vec3 _vectorA, const Vec3 _vectorB);
+float Dot(const Vec3 _vectorA, const Vec3 _vectorB);
+float Distance(const Vec3 _p1, const Vec3 _p2);
 
-	struct Quat
-	{
-		float x, y, z, w;
-		Quat();
-		Quat(float _x, float _y, float _z, float _w);
-	};
-	// Get
-	Quat GetQuatIdentity();
+struct Quat
+{
+float x, y, z, w;
+Quat();
+Quat(float _x, float _y, float _z, float _w);
+};
+// Get
+Quat GetQuatIdentity();
 
-	struct Mat4
-	{
+struct Mat4
+{
 #ifdef RIGHT_HANDED_MATRIX
-		float	xx, yx, zx, wx,
-				xy, yy, zy, wy,
-				xz, yz, zz, wz,
-				xw, yw, zw, ww;
+float	xx, yx, zx, wx,
+xy, yy, zy, wy,
+xz, yz, zz, wz,
+xw, yw, zw, ww;
 #else
-		float	xx, xy, xz, xw,
-				yx, yy, yz, yw,
-				zx, zy, zz, zw,
-				wx, wy, wz, ww;
+float	xx, xy, xz, xw,
+yx, yy, yz, yw,
+zx, zy, zz, zw,
+wx, wy, wz, ww;
 #endif
-		Mat4();
-		Mat4(float _xx, float _xy, float _xz, float _xw,
-			float _yx, float _yy, float _yz, float _yw,
-			float _zx, float _zy, float _zz, float _zw,
-			float _wx, float _wy, float _wz, float _ww);
+Mat4();
+Mat4(float _xx, float _xy, float _xz, float _xw,
+float _yx, float _yy, float _yz, float _yw,
+float _zx, float _zy, float _zz, float _zw,
+float _wx, float _wy, float _wz, float _ww);
 
-		void operator+=(const Mat4& _source);
-		void operator-=(const Mat4& _source);
+void operator+=(const Mat4& _source);
+void operator-=(const Mat4& _source);
 
-		void operator*=(const float _source);
-		void operator*=(const Mat4& _source);
+void operator*=(const float _source);
+void operator*=(const Mat4& _source);
 
-		Mat4 operator*(const Mat4& _source);
-	};
-	// Get
-	Mat4 GetMat4Identity();
-	Mat4 GetTranslateMatrix(Vec3 _translate);
-	Mat4 GetRotateXMatrix(float _x);
-	Mat4 GetRotateYMatrix(float _y);
-	Mat4 GetRotateZMatrix(float _z);
-	Mat4 GetRotateMatrix(Vec3 _rotate);
-	Mat4 GetScaleMatrix(Vec3 _scale);
-	Mat4 GetPerspectiveMatrix(float _fov, float _aspect, float _near, float _far);
-	Mat4 GetLookAt(Vec3 _eye, Vec3 _center, Vec3 _up);
+Mat4 operator*(const Mat4& _source);
+};
+// Get
+Mat4 GetMat4Identity();
+Mat4 GetTranslateMatrix(Vec3 _translate);
+Mat4 GetRotateXMatrix(float _x);
+Mat4 GetRotateYMatrix(float _y);
+Mat4 GetRotateZMatrix(float _z);
+Mat4 GetRotateMatrix(Vec3 _rotate);
+Mat4 GetScaleMatrix(Vec3 _scale);
+Mat4 GetPerspectiveMatrix(float _fov, float _aspect, float _near, float _far);
+Mat4 GetLookAt(Vec3 _eye, Vec3 _center, Vec3 _up);
 
-	// Extract
-	Vec3 ExtractPosition(Mat4 _matrix);
-	Vec3 ExtractFront(Mat4 _matrix);
-	Vec3 ExtractRight(Mat4 _matrix);
-	Vec3 ExtractUp(Mat4 _matrix);
-	Vec3 ExtractScale(Mat4 _matrix);
+// Extract
+Vec3 ExtractPosition(Mat4 _matrix);
+Vec3 ExtractFront(Mat4 _matrix);
+Vec3 ExtractRight(Mat4 _matrix);
+Vec3 ExtractUp(Mat4 _matrix);
+Vec3 ExtractScale(Mat4 _matrix);
 
-	// Other
-	Vec3 GetMidpoint(Math3D::Vec3 _p1, Math3D::Vec3 _p2);
-	bool CollisionCheckSphere(Math3D::Vec3 _p1, float _p1r, Math3D::Vec3 _p2, float _p2r);
+// Other
+Vec3 GetMidpoint(Math3D::Vec3 _p1, Math3D::Vec3 _p2);
+bool CollisionCheckSphere(Math3D::Vec3 _p1, float _p1r, Math3D::Vec3 _p2, float _p2r);
 }
 //*/
 

@@ -121,16 +121,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Input.h" />
-    <ClInclude Include="Loader.h" />
-    <ClInclude Include="Math3D.h" />
-    <ClInclude Include="Gpu.h" />
-    <ClInclude Include="GpuController.h" />
-    <ClInclude Include="Scene.h" />
-    <ClInclude Include="Timer.h" />
-    <ClInclude Include="Vk.h" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Shaders\shader.comp" />
     <None Include="Shaders\shader.frag" />
     <None Include="Shaders\shader.geom" />
@@ -140,10 +130,21 @@
     <ClCompile Include="Gpu.cpp" />
     <ClCompile Include="GpuController.cpp" />
     <ClCompile Include="Input.cpp" />
-    <ClCompile Include="Math3D.cpp" />
     <ClCompile Include="Scene.cpp" />
-    <ClCompile Include="Vk.cpp" />
+    <ClCompile Include="VkU.cpp" />
     <ClCompile Include="_main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="DataPack.h" />
+    <ClInclude Include="Definitions.h" />
+    <ClInclude Include="Gpu.h" />
+    <ClInclude Include="GpuController.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="Loader.h" />
+    <ClInclude Include="Math3D.h" />
+    <ClInclude Include="Scene.h" />
+    <ClInclude Include="Timer.h" />
+    <ClInclude Include="VkU.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

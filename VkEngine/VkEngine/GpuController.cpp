@@ -8,18 +8,10 @@
 
 #define FONT_COMBINED_IMAGE_SAMPLER_BINDING 0
 
-#define STAGING_BUFFER_SIZE 110208
+#include "Input.h"
 
-void GpuController::Init(VkS::Device* _device)
+void GpuController::Init(VkU::Device* _device)
 {
-	Input::Init();
-
-	timer.SetResolution(Timer::RESOLUTION::RESOLUTION_NANOSECONDS);
-	timer.Play();
-	lastTime = timer.GetTime();
-
-	scene.Init();
-
 	device = _device;
 	window = device->windows[0];
 
@@ -131,7 +123,7 @@ void GpuController::Init(VkS::Device* _device)
 		createWindowResourcesInfo.imageCount = 3;
 		createWindowResourcesInfo.renderPass = renderPass;
 
-		VkA::CreateWindowResources(*window, createWindowResourcesInfo);
+		VkU::CreateWindowResources(*window, createWindowResourcesInfo);
 	}
 
 	// DescriptorSetLayout
@@ -214,7 +206,7 @@ void GpuController::Init(VkS::Device* _device)
 		pipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstantRanges.size();
 		pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
 
-		VkU::vkApiResult = vkCreatePipelineLayout(device->handle, &pipelineLayoutCreateInfo, nullptr, &mvpPush8Vert8FragPipelineLayout);
+		VkU::vkApiResult = vkCreatePipelineLayout(device->handle, &pipelineLayoutCreateInfo, nullptr, &mvpDiffuseNormalPush8Vert8FragPipelineLayout);
 
 		// Text
 		pushConstantRanges.clear();
@@ -239,9 +231,40 @@ void GpuController::Init(VkS::Device* _device)
 		pipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstantRanges.size();
 		pipelineLayoutCreateInfo.pPushConstantRanges = pushConstantRanges.data();
 
-		VkU::vkApiResult = vkCreatePipelineLayout(device->handle, &pipelineLayoutCreateInfo, nullptr, &push16Vert16Frag16GeomPipelineLayout);
+		VkU::vkApiResult = vkCreatePipelineLayout(device->handle, &pipelineLayoutCreateInfo, nullptr, &fontPush16Vert16Frag16GeomPipelineLayout);
 	}
 
+	// Sampler
+	{
+		VkSamplerCreateInfo samplerCreateInfo;
+		samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerCreateInfo.pNext = nullptr;
+		samplerCreateInfo.flags = VK_RESERVED_FOR_FUTURE_USE;
+		samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+		samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
+		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerCreateInfo.mipLodBias = 0.0f;
+		samplerCreateInfo.anisotropyEnable = VK_FALSE;
+		samplerCreateInfo.maxAnisotropy = 1;
+		samplerCreateInfo.compareEnable = VK_FALSE;
+		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerCreateInfo.minLod = 0.0f;
+		samplerCreateInfo.maxLod = 0.0f;
+		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+
+		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &nearestSampler);
+
+		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &linearSampler);
+	}
+}
+void GpuController::Load(Scene& _scene)
+{
 	// Shader Modules
 	{
 		VkU::CreateShaderModuleInfo createShaderModuleInfo;
@@ -249,17 +272,17 @@ void GpuController::Init(VkS::Device* _device)
 
 		// Text
 		createShaderModuleInfo.filename = "Shaders/Text/vert.spv";
-		VkA::CreateShaderModule(vertexTextShaderModule, createShaderModuleInfo);
+		VkU::CreateShaderModule(vertexTextShaderModule, createShaderModuleInfo);
 		createShaderModuleInfo.filename = "Shaders/Text/geom.spv";
-		VkA::CreateShaderModule(geometryTextShaderModule, createShaderModuleInfo);
+		VkU::CreateShaderModule(geometryTextShaderModule, createShaderModuleInfo);
 		createShaderModuleInfo.filename = "Shaders/Text/frag.spv";
-		VkA::CreateShaderModule(fragmentTextShaderModule, createShaderModuleInfo);
+		VkU::CreateShaderModule(fragmentTextShaderModule, createShaderModuleInfo);
 
 		// Parallax Occlusion
 		createShaderModuleInfo.filename = "Shaders/Parallax Occlusion/vert.spv";
-		VkA::CreateShaderModule(vertexParallaxOcclusionShaderModule, createShaderModuleInfo);
+		VkU::CreateShaderModule(vertexParallaxOcclusionShaderModule, createShaderModuleInfo);
 		createShaderModuleInfo.filename = "Shaders/Parallax Occlusion/frag.spv";
-		VkA::CreateShaderModule(fragmentParallaxOcclusionShaderModule, createShaderModuleInfo);
+		VkU::CreateShaderModule(fragmentParallaxOcclusionShaderModule, createShaderModuleInfo);
 	}
 
 	// PipelineData
@@ -320,12 +343,12 @@ void GpuController::Init(VkS::Device* _device)
 			pipelineData.vertexInputBindingDescriptions[0].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions.resize(1);
 			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].binding = 0;
-			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].stride = VkD::GetVertexStride((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
+			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].stride = VkU::GetVertexStride((Definitions::VERTEX_DATATYPE)(Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT));
 			pipelineData.vertexInputBindingDescriptions[1].vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-			
+
 			pipelineData.vertexInputAttributeDescriptions.resize(2);
-			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_NONE));
-			pipelineData.vertexInputAttributeDescriptions[1].vertexInputAttributeDescriptions = VkD::GetVertexInputAttributeDescriptions((Loader::VERTEX_DATATYPE)(Loader::VDT_X | Loader::VDT_Y | Loader::VDT_Z | Loader::VDT_UV | Loader::VDT_NORMAL | Loader::VDT_TANGENT_BITANGENT));
+			pipelineData.vertexInputAttributeDescriptions[0].vertexInputAttributeDescriptions = VkU::GetVertexInputAttributeDescriptions((Definitions::VERTEX_DATATYPE)(Definitions::VDT_NONE));
+			pipelineData.vertexInputAttributeDescriptions[1].vertexInputAttributeDescriptions = VkU::GetVertexInputAttributeDescriptions((Definitions::VERTEX_DATATYPE)(Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT));
 
 			// Text?
 			pipelineData.pipelineVertexInputStateCreateInfos.resize(2);
@@ -508,7 +531,6 @@ void GpuController::Init(VkS::Device* _device)
 		}
 
 		// Dynamic
-		{}
 
 		// GraphicsPipelineCreateInfos
 		{
@@ -529,7 +551,7 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[0].pDepthStencilState = &pipelineData.pipelineDepthStencilStateCreateInfos[0];
 			graphicsPipelineCreateInfos[0].pColorBlendState = &pipelineData.pipelineColorBlendStateCreateInfos[0];
 			graphicsPipelineCreateInfos[0].pDynamicState = nullptr;
-			graphicsPipelineCreateInfos[0].layout = push16Vert16Frag16GeomPipelineLayout;
+			graphicsPipelineCreateInfos[0].layout = fontPush16Vert16Frag16GeomPipelineLayout;
 			graphicsPipelineCreateInfos[0].renderPass = renderPass;
 			graphicsPipelineCreateInfos[0].subpass = 0;
 			graphicsPipelineCreateInfos[0].basePipelineHandle = VK_NULL_HANDLE;
@@ -550,7 +572,7 @@ void GpuController::Init(VkS::Device* _device)
 			graphicsPipelineCreateInfos[1].pDepthStencilState = &pipelineData.pipelineDepthStencilStateCreateInfos[1];
 			graphicsPipelineCreateInfos[1].pColorBlendState = &pipelineData.pipelineColorBlendStateCreateInfos[0];
 			graphicsPipelineCreateInfos[1].pDynamicState = nullptr;
-			graphicsPipelineCreateInfos[1].layout = mvpPush8Vert8FragPipelineLayout;
+			graphicsPipelineCreateInfos[1].layout = mvpDiffuseNormalPush8Vert8FragPipelineLayout;
 			graphicsPipelineCreateInfos[1].renderPass = renderPass;
 			graphicsPipelineCreateInfos[1].subpass = 0;
 			graphicsPipelineCreateInfos[1].basePipelineHandle = VK_NULL_HANDLE;
@@ -563,7 +585,7 @@ void GpuController::Init(VkS::Device* _device)
 	{
 		graphicsPipelines.resize(graphicsPipelineCreateInfos.size());
 		vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, graphicsPipelines.data());
-		
+
 		textPipeline = graphicsPipelines[0];
 		parallaxOcclusionPipeline = graphicsPipelines[1];
 	}
@@ -573,196 +595,76 @@ void GpuController::Init(VkS::Device* _device)
 
 	}
 
-	// Buffers
-	{
-		VkU::CreateBufferInfo createBufferInfo;
-		createBufferInfo.vkDevice = device->handle;
-		createBufferInfo.physicalDevice = device->physicalDevice;
-
-		// staging
-		{
-			createBufferInfo.size = STAGING_BUFFER_SIZE; // 2 mat4(view projection) 1024 mat4(model matrices)
-			stagingBufferData = new uint8_t[createBufferInfo.size];
-
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-			VkA::CreateBuffer(stagingBuffer, createBufferInfo);
-		}
-
-		VkU::FillBufferInfo fillBufferInfo;
-		fillBufferInfo.vkDevice = device->handle;
-		fillBufferInfo.dstBuffer = stagingBuffer;
-
-		VkU::CopyBufferInfo copyBufferInfo;
-		copyBufferInfo.vkDevice = device->handle;
-		copyBufferInfo.setupFence = setupFence;
-		copyBufferInfo.setupQueue = graphicsQueue;
-		copyBufferInfo.setupCommandBuffer = graphicsCommandBuffer;
-		copyBufferInfo.srcBuffer = stagingBuffer.handle;
-		copyBufferInfo.copyRegions.resize(1);
-		copyBufferInfo.copyRegions[0].srcOffset = 0;
-		copyBufferInfo.copyRegions[0].dstOffset = 0;
-
-		// view projection
-		{
-			viewProjectionData[0] = scene.view;
-
-			viewProjectionData[1] = Math3D::Mat4::GetPerspectiveProjection(45.0f, (float)window->extent.width, (float)window->extent.height, 0.1f, 1000.0f);
-
-			createBufferInfo.size = sizeof(viewProjectionData);
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(viewProjectionBuffer, createBufferInfo);
-
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(viewProjectionData);
-			fillBufferInfo.data = viewProjectionData;
-			VkA::FillBuffer(fillBufferInfo);
-
-			copyBufferInfo.copyRegions[0].size = viewProjectionBuffer.size;
-			copyBufferInfo.dstBuffer = viewProjectionBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
-
-		// model matrices
-		{
-			ZeroMemory(modelMatricesData, sizeof(modelMatricesData));
-
-			createBufferInfo.size = sizeof(modelMatricesData);
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(modelMatricesBuffer, createBufferInfo);
-
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = sizeof(modelMatricesData);
-			fillBufferInfo.data = modelMatricesData;
-			VkA::FillBuffer(fillBufferInfo);
-
-			copyBufferInfo.copyRegions[0].size = modelMatricesBuffer.size;
-			copyBufferInfo.dstBuffer = modelMatricesBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
-
-		Loader::ModelData modelData;
-		modelData.LoadModel("Models/cube.fbx",
-			Loader::VDT_X
-			| Loader::VDT_Y
-			| Loader::VDT_Z
-			| Loader::VDT_UV
-			//| VkD::VDT_R
-			//| VkD::VDT_G
-			//| VkD::VDT_B
-			//| VkD::VDT_A
-			//| VkD::VDT_SKELETON_1_BONE_PER_VERTEX
-			//| VkD::VDT_SKELETON_BONE_INDEX_SIZE_16
-			| Loader::VDT_NORMAL
-			| Loader::VDT_TANGENT_BITANGENT
-			, true);
-		indexCount = modelData.indexDataCount;
-
-		// vertex buffer
-		{
-			void* vertices = modelData.vertexData;
-			VkDeviceSize vSize = modelData.vertexDataSize;
-			//float vertices[] = {
-			//	//	Position					TexCoord			Normal
-			//	+0.0f, -0.5f, -0.0f,		+0.0f, -1.0f,		0.0f, 1.0f, 0.0f,
-			//	+0.5f, +0.5f, -0.0f,		+1.0f, +1.0f,		0.0f, 1.0f, 0.0f,
-			//	-0.5f, +0.5f, -0.0f,		-1.0f, +1.0f,		0.0f, 1.0f, 0.0f, };
-
-			createBufferInfo.size = vSize;
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(vertexBuffer, createBufferInfo);
-
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = vSize;
-			fillBufferInfo.data = vertices;
-			VkA::FillBuffer(fillBufferInfo);
-
-			copyBufferInfo.copyRegions[0].size = vertexBuffer.size;
-			copyBufferInfo.dstBuffer = vertexBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
-
-		// index buffer
-		{
-			void* indices = modelData.indexData;
-			VkDeviceSize iSize = modelData.indexDataSize;
-			//uint16_t indices[] = { 0, 1, 2 };
-
-			createBufferInfo.size = iSize;
-			createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			createBufferInfo.memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			VkA::CreateBuffer(indexBuffer, createBufferInfo);
-
-			fillBufferInfo.offset = 0;
-			fillBufferInfo.size = iSize;
-			fillBufferInfo.data = indices;
-			VkA::FillBuffer(fillBufferInfo);
-
-			copyBufferInfo.copyRegions[0].size = indexBuffer.size;
-			copyBufferInfo.dstBuffer = indexBuffer.handle;
-			VkA::CopyBuffer(copyBufferInfo);
-		}
-	}
-
-	// Texture
-	{}
+	// Textures
 	{
 		Loader::TextureData textureData;
 
-		VkU::CreateTextureInfo2 createTextureInfo2;
-		createTextureInfo2.textureData = &textureData;
-		createTextureInfo2.vkDevice = device->handle;
-		createTextureInfo2.physicalDevice = device->physicalDevice;
-		createTextureInfo2.setupFence = setupFence;
-		createTextureInfo2.setupCommandBuffer = graphicsCommandBuffer;
-		createTextureInfo2.setupQueue = graphicsQueue;
+		VkU::CreateTextureInfo createTextureInfo;
+		createTextureInfo.textureData = &textureData;
+		createTextureInfo.vkDevice = device->handle;
+		createTextureInfo.physicalDevice = device->physicalDevice;
+		createTextureInfo.setupFence = setupFence;
+		createTextureInfo.setupCommandBuffer = graphicsCommandBuffer;
+		createTextureInfo.setupQueue = graphicsQueue;
 
 		// Font
 		textureData.LoadTGA("Textures/font3.tga");
-		VkA::CreateTexture2(fontTexture, createTextureInfo2);
+		VkU::CreateTexture(fontTexture, createTextureInfo);
 
 		// Diffuse
 		textureData.LoadTGA("Textures/rocks diffuse.tga");
-		VkA::CreateTexture2(rocksDiffuseTexture, createTextureInfo2);
+		VkU::CreateTexture(rocksDiffuseTexture, createTextureInfo);
 
 		// Normal
 		textureData.LoadTGA("Textures/rocks normal.tga");
-		VkA::CreateTexture2(rocksNormalTexture, createTextureInfo2);
+		VkU::CreateTexture(rocksNormalTexture, createTextureInfo);
 	}
 
-	// Sampler
-	{}
+	// Buffers
 	{
-		VkSamplerCreateInfo samplerCreateInfo;
-		samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerCreateInfo.pNext = nullptr;
-		samplerCreateInfo.flags = VK_RESERVED_FOR_FUTURE_USE;
-		samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
-		samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.mipLodBias = 0.0f;
-		samplerCreateInfo.anisotropyEnable = VK_FALSE;
-		samplerCreateInfo.maxAnisotropy = 1;
-		samplerCreateInfo.compareEnable = VK_FALSE;
-		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-		samplerCreateInfo.minLod = 0.0f;
-		samplerCreateInfo.maxLod = 0.0f;
-		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+		Loader::ModelData modelDataCube;
+		modelDataCube.LoadModel("Models/cube.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
 
-		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &nearestSampler);
+		Loader::ModelData modelDataSphere;
+		modelDataSphere.LoadModel("Models/Sphere.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
+		
+		Loader::ModelData modelDataMonkey;
+		modelDataMonkey.LoadModel("Models/monkey.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
 
-		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &linearSampler);
+		VkU::CreateBufferInfo createBufferInfo;
+		createBufferInfo.vkDevice = device->handle;
+		createBufferInfo.physicalDevice = device->physicalDevice;
+		createBufferInfo.setupFence = setupFence;
+		createBufferInfo.setupCommandBuffer = graphicsCommandBuffer;
+		createBufferInfo.setupQueue = graphicsQueue;
+
+		createBufferInfo.datas = { VkU::Data::GetData(nullptr, sizeof(Scene::viewProjectionData)) };
+		createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		VkU::CreateBuffer(viewProjectionBuffer, &viewProjectionStagingBuffer, createBufferInfo);
+
+		createBufferInfo.datas = { VkU::Data::GetData(nullptr, sizeof(Math3D::Mat4) * _scene.modelMatrices.size()) };
+		createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		VkU::CreateBuffer(modelMatricesBuffer, &modelMatricesStagingBuffer, createBufferInfo);
+
+		createBufferInfo.datas = {
+			VkU::Data::GetData(modelDataCube.vertexData, modelDataCube.vertexDataSize),
+			VkU::Data::GetData(modelDataSphere.vertexData, modelDataSphere.vertexDataSize),
+			VkU::Data::GetData(modelDataMonkey.vertexData, modelDataMonkey.vertexDataSize),
+		};
+		createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		VkU::CreateBuffer(vertexBuffer, nullptr, createBufferInfo);
+
+		createBufferInfo.datas = {
+			VkU::Data::GetData(modelDataCube.indexData, modelDataCube.indexDataSize),
+			VkU::Data::GetData(modelDataSphere.indexData, modelDataSphere.indexDataSize),
+			VkU::Data::GetData(modelDataMonkey.indexData, modelDataMonkey.indexDataSize),
+		};
+		createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		VkU::CreateBuffer(indexBuffer, nullptr, createBufferInfo);
 	}
-
+}
+void GpuController::Setup(Scene& _scene)
+{
 	// DescriptorPool
 	{
 		std::vector<VkDescriptorPoolSize> descriptorPoolSizes(2);
@@ -785,14 +687,14 @@ void GpuController::Init(VkS::Device* _device)
 	// DescriptorSets
 	{
 		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {
+			fontDescriptorSetLayout,
 			mvpDescriptorSetLayout,
 			diffuseNormalDescriptorSetLayout,
-			fontDescriptorSetLayout,
 		};
 		std::vector<VkDescriptorSet> descriptorSets = {
+			fontDescriptorSet,
 			mvpDescriptorSet,
 			diffuseNormalDescriptorSet,
-			fontDescriptorSet,
 		};
 
 		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
@@ -804,9 +706,9 @@ void GpuController::Init(VkS::Device* _device)
 
 		vkAllocateDescriptorSets(device->handle, &descriptorSetAllocateInfo, descriptorSets.data());
 
-		mvpDescriptorSet = descriptorSets[0];
-		diffuseNormalDescriptorSet = descriptorSets[1];
-		fontDescriptorSet = descriptorSets[2];
+		fontDescriptorSet = descriptorSets[0];
+		mvpDescriptorSet = descriptorSets[1];
+		diffuseNormalDescriptorSet = descriptorSets[2];
 	}
 
 	// UpdateDescriptorSets
@@ -817,7 +719,7 @@ void GpuController::Init(VkS::Device* _device)
 		VkDescriptorBufferInfo viewProjectionDescriptorBufferInfo;
 		viewProjectionDescriptorBufferInfo.buffer = viewProjectionBuffer.handle;
 		viewProjectionDescriptorBufferInfo.offset = 0;
-		viewProjectionDescriptorBufferInfo.range = sizeof(viewProjectionData);
+		viewProjectionDescriptorBufferInfo.range = sizeof(Scene::viewProjectionData);
 
 		writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[0].pNext = nullptr;
@@ -834,7 +736,7 @@ void GpuController::Init(VkS::Device* _device)
 		VkDescriptorBufferInfo modelMatricesDescriptorBufferInfo;
 		modelMatricesDescriptorBufferInfo.buffer = modelMatricesBuffer.handle;
 		modelMatricesDescriptorBufferInfo.offset = 0;
-		modelMatricesDescriptorBufferInfo.range = sizeof(modelMatricesData);
+		modelMatricesDescriptorBufferInfo.range = sizeof(Math3D::Mat4) * _scene.modelMatrices.size();
 
 		writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[1].pNext = nullptr;
@@ -901,16 +803,9 @@ void GpuController::Init(VkS::Device* _device)
 		vkUpdateDescriptorSets(device->handle, (uint32_t)writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
 	}
 }
-void GpuController::Run()
+void GpuController::Render(Scene& _scene, float _time, float _deltaTime)
 {
-	Input::Update();
-	scene.Update((float)deltaTime);
-
-	double newTime = timer.GetTime();
-	deltaTime = newTime - lastTime;
-	lastTime = newTime;
-
-	// Draw o secondary command buffer
+	// Draw on secondary command buffer
 	{
 		vkWaitForFences(device->handle, 1, &setupFence, VK_TRUE, -1);
 		vkResetFences(device->handle, 1, &setupFence);
@@ -935,19 +830,18 @@ void GpuController::Run()
 		vkBeginCommandBuffer(window->secondaryCommandBuffers[window->imageIndex], &commandBufferBeginInfo);
 
 		VkDeviceSize offset = 0;
-
 		{
 			// parallax occlusion
 			vkCmdBindPipeline(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, parallaxOcclusionPipeline);
 			std::vector<VkDescriptorSet> descriptorSets = { mvpDescriptorSet, diffuseNormalDescriptorSet };
-			vkCmdBindDescriptorSets(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpPush8Vert8FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+			vkCmdBindDescriptorSets(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mvpDiffuseNormalPush8Vert8FragPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
 			struct ParallaxOcclusionVertexShaderPushConstantData
 			{
 				uint32_t modelMatrixIndex = 0;
 				float time = 0.0f;
 			} parallaxOcclusionVertexShaderPushConstantData;
-			parallaxOcclusionVertexShaderPushConstantData.time = (float)timer.GetTime();
+			parallaxOcclusionVertexShaderPushConstantData.time = _time;
 
 			struct ParallaxOcclusionFragmentShaderPushConstantData
 			{
@@ -959,28 +853,28 @@ void GpuController::Run()
 			if (!Input::GetKeyInputState(Input::KEY_SHIFT) == Input::INPUT_STATE_IDLE)
 			{
 				if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.heightScale += 0.1f * (float)deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.heightScale += 0.1f * _deltaTime;
 				if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.heightScale -= 0.1f * (float)deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.heightScale -= 0.1f * _deltaTime;
 			}
 			else
 			{
 				if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.numLayers += 2.0f * (float)deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.numLayers += 2.0f * _deltaTime;
 				if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.numLayers -= 2.0f * (float)deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.numLayers -= 2.0f * _deltaTime;
 			}
-			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ParallaxOcclusionVertexShaderPushConstantData), &parallaxOcclusionVertexShaderPushConstantData);
-			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(ParallaxOcclusionVertexShaderPushConstantData), sizeof(ParallaxOcclusionFragmentShaderPushConstantData), &parallaxOcclusionFragmentShaderPushConstantData);
+			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpDiffuseNormalPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ParallaxOcclusionVertexShaderPushConstantData), &parallaxOcclusionVertexShaderPushConstantData);
+			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpDiffuseNormalPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(ParallaxOcclusionVertexShaderPushConstantData), sizeof(ParallaxOcclusionFragmentShaderPushConstantData), &parallaxOcclusionFragmentShaderPushConstantData);
 
 			vkCmdBindVertexBuffers(window->secondaryCommandBuffers[window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
 			vkCmdBindIndexBuffer(window->secondaryCommandBuffers[window->imageIndex], indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
 
-			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], indexCount, 1, 0, 0, 0);
+			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], 36, 1, 0, 0, 0);
 
 			// text
-			for(size_t iTexts = 0; iTexts != scene.texts2D.size(); ++iTexts)
-				scene.texts2D[iTexts].Render(window->secondaryCommandBuffers[window->imageIndex], textPipeline, push16Vert16Frag16GeomPipelineLayout, { fontDescriptorSet });
+			for (size_t iTexts = 0; iTexts != _scene.texts2D.size(); ++iTexts)
+				_scene.texts2D[iTexts].Render(window->secondaryCommandBuffers[window->imageIndex], textPipeline, fontPush16Vert16Frag16GeomPipelineLayout, { fontDescriptorSet });
 		}
 
 		vkEndCommandBuffer(window->secondaryCommandBuffers[window->imageIndex]);
@@ -997,175 +891,82 @@ void GpuController::Run()
 
 	vkBeginCommandBuffer(graphicsCommandBuffer, &commandBufferBeginInfo);
 
-	// Update camera
-	{
-		if (GetAsyncKeyState('A'))
-			scene.cameraPosition.x += (float)(deltaTime);
-		if (GetAsyncKeyState('D'))
-			scene.cameraPosition.x -= (float)(deltaTime);
-
-		if (GetAsyncKeyState('Q'))
-			scene.cameraPosition.y += (float)(deltaTime);
-		if (GetAsyncKeyState('E'))
-			scene.cameraPosition.y -= (float)(deltaTime);
-
-		if (GetAsyncKeyState('W'))
-			scene.cameraPosition.z += (float)(deltaTime);
-		if (GetAsyncKeyState('S'))
-			scene.cameraPosition.z -= (float)(deltaTime);
-
-		scene.view = Math3D::Mat4::GetLookAt(scene.cameraPosition, scene.cameraTarget, scene.cameraUp);
-
-		viewProjectionData[0] = scene.view;
-	}
-
-	Math3D::Vec3 cameraPosition = Math3D::Mat4::ExtractPosition(viewProjectionData[0]);
-
-	// Update model
-	{
-		static Math3D::Mat4 transform = Math3D::Mat4::GetIdentity();
-		
-		if (GetAsyncKeyState(VK_SHIFT))
-		{
-			if (GetAsyncKeyState('J'))
-				transform = Math3D::Mat4::GetRotateZMatrix((float)(-deltaTime)) * transform;
-			if (GetAsyncKeyState('L'))
-				transform = Math3D::Mat4::GetRotateZMatrix((float)(+deltaTime)) * transform;
-
-			if (GetAsyncKeyState('U'))
-				transform = Math3D::Mat4::GetRotateYMatrix((float)(+deltaTime)) * transform;
-			if (GetAsyncKeyState('O'))
-				transform = Math3D::Mat4::GetRotateYMatrix((float)(-deltaTime)) * transform;
-
-			if (GetAsyncKeyState('I'))
-				transform = Math3D::Mat4::GetRotateXMatrix((float)(+deltaTime)) * transform;
-			if (GetAsyncKeyState('K'))
-				transform = Math3D::Mat4::GetRotateXMatrix((float)(-deltaTime)) * transform;
-		}
-		else if (GetAsyncKeyState(VK_CONTROL))
-		{
-			if (GetAsyncKeyState('J'))
-				transform = Math3D::Mat4::GetScaleMatrix({ (float)(1.0f + deltaTime), 1.0f, 1.0f }) * transform;
-			if (GetAsyncKeyState('L'))
-				transform = Math3D::Mat4::GetScaleMatrix({ (float)(1.0f - deltaTime), 1.0f, 1.0f }) * transform;
-
-			if (GetAsyncKeyState('U'))
-				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f + deltaTime), 1.0f }) * transform;
-			if (GetAsyncKeyState('O'))
-				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, (float)(1.0f - deltaTime), 1.0f }) * transform;
-
-			if (GetAsyncKeyState('I'))
-				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f + deltaTime) }) * transform;
-			if (GetAsyncKeyState('K'))
-				transform = Math3D::Mat4::GetScaleMatrix({ 1.0f, 1.0f, (float)(1.0f - deltaTime) }) * transform;
-		}
-		else
-		{
-			if (GetAsyncKeyState('J'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ (float)(+deltaTime), 0.0f, 0.0f }) * transform;
-			if (GetAsyncKeyState('L'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ (float)(-deltaTime), 0.0f, 0.0f }) * transform;
-
-			if (GetAsyncKeyState('U'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, (float)(+deltaTime), 0.0f }) * transform;
-			if (GetAsyncKeyState('O'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, (float)(-deltaTime), 0.0f }) * transform;
-
-			if (GetAsyncKeyState('I'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(+deltaTime) }) * transform;
-			if (GetAsyncKeyState('K'))
-				transform = Math3D::Mat4::GetTranslateMatrix({ 0.0f, 0.0f, (float)(-deltaTime) }) * transform;
-		}
-
-		modelMatricesData[0] = transform;
-	}
-
 	// Fill Staging
 	{
-		VkU::FillBufferInfo2 fillBufferInfo2;
-		fillBufferInfo2.vkDevice = device->handle;
-		fillBufferInfo2.dstBuffer = stagingBuffer;
-		fillBufferInfo2.targetBufferMemoryOffset = 0;
-		fillBufferInfo2.targetBufferMemorySize = stagingBuffer.size;
-		fillBufferInfo2.memoryFillRegions.resize(2);
+		VkU::FillBufferInfo fillBufferInfo;
+		fillBufferInfo.vkDevice = device->handle;
 
-		fillBufferInfo2.memoryFillRegions[0].targetBufferMemoryOffset = 0;
-		fillBufferInfo2.memoryFillRegions[0].size = sizeof(viewProjectionData);
-		fillBufferInfo2.memoryFillRegions[0].data = viewProjectionData;
+		fillBufferInfo.sourceBuffer = viewProjectionStagingBuffer;
+		fillBufferInfo.datas = { VkU::Data::GetData(_scene.viewProjectionData, sizeof(Scene::viewProjectionData)) };
+		VkU::FillBuffer(viewProjectionBuffer, fillBufferInfo);
 
-		fillBufferInfo2.memoryFillRegions[1].targetBufferMemoryOffset = sizeof(viewProjectionData);
-		fillBufferInfo2.memoryFillRegions[1].size = sizeof(modelMatricesData);
-		fillBufferInfo2.memoryFillRegions[1].data = modelMatricesData;
-		VkA::FillBuffer2(fillBufferInfo2);
+		fillBufferInfo.sourceBuffer = modelMatricesStagingBuffer;
+		fillBufferInfo.datas = { VkU::Data::GetData(_scene.modelMatrices.data(), sizeof(Math3D::Mat4) * _scene.modelMatrices.size()) };
+		VkU::FillBuffer(modelMatricesBuffer, fillBufferInfo);
 	}
 
 	// Copy from staging to device buffers
 	{
-		VkU::CopyBuffersInfo copyBuffersInfo;
-		copyBuffersInfo.commandBuffer = graphicsCommandBuffer;
-		copyBuffersInfo.srcBuffer = stagingBuffer.handle;
+		VkBufferCopy bufferCopy;
+		bufferCopy.srcOffset = 0;
+		bufferCopy.dstOffset = 0;
 
-		copyBuffersInfo.bufferRegion.resize(2);
-		copyBuffersInfo.bufferRegion[0].dstBuffer = viewProjectionBuffer.handle;
-		copyBuffersInfo.bufferRegion[0].copyRegions.resize(1);
-		copyBuffersInfo.bufferRegion[0].copyRegions[0].srcOffset = 0;
-		copyBuffersInfo.bufferRegion[0].copyRegions[0].dstOffset = 0;
-		copyBuffersInfo.bufferRegion[0].copyRegions[0].size = sizeof(viewProjectionData);
+		bufferCopy.size = sizeof(Scene::viewProjectionData);
+		vkCmdCopyBuffer(graphicsCommandBuffer, viewProjectionStagingBuffer.handle, viewProjectionBuffer.handle, 1, &bufferCopy);
 
-		copyBuffersInfo.bufferRegion[1].dstBuffer = modelMatricesBuffer.handle;
-		copyBuffersInfo.bufferRegion[1].copyRegions.resize(1);
-		copyBuffersInfo.bufferRegion[1].copyRegions[0].srcOffset = sizeof(viewProjectionData);
-		copyBuffersInfo.bufferRegion[1].copyRegions[0].dstOffset = 0;
-		copyBuffersInfo.bufferRegion[1].copyRegions[0].size = sizeof(modelMatricesData);
-		VkA::CopyBuffers(copyBuffersInfo);
+		bufferCopy.size = sizeof(Math3D::Mat4) * _scene.modelMatrices.size();
+		vkCmdCopyBuffer(graphicsCommandBuffer, modelMatricesStagingBuffer.handle, modelMatricesBuffer.handle, 1, &bufferCopy);
 	}
 
-	VkClearValue clearColor[2];
-	clearColor[0].color = { 0.3f, 0.3f, 0.5f, 0.0f };
-	clearColor[1].depthStencil = { 1.0f, 0 };
+	// Render
+	{
+		VkClearValue clearColor[2];
+		clearColor[0].color = { 0.3f, 0.3f, 0.5f, 0.0f };
+		clearColor[1].depthStencil = { 1.0f, 0 };
 
-	VkRenderPassBeginInfo renderPassBeginInfo;
-	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBeginInfo.pNext = nullptr;
-	renderPassBeginInfo.renderPass = renderPass;
-	renderPassBeginInfo.framebuffer = window->framebuffers[window->imageIndex];
-	renderPassBeginInfo.renderArea.offset = { 0, 0 };
-	renderPassBeginInfo.renderArea.extent = { window->extent.width, window->extent.height };
-	renderPassBeginInfo.clearValueCount = sizeof(clearColor) / sizeof(VkClearValue);
-	renderPassBeginInfo.pClearValues = clearColor;
-	vkCmdBeginRenderPass(graphicsCommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		VkRenderPassBeginInfo renderPassBeginInfo;
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.pNext = nullptr;
+		renderPassBeginInfo.renderPass = renderPass;
+		renderPassBeginInfo.framebuffer = window->framebuffers[window->imageIndex];
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.renderArea.extent = { window->extent.width, window->extent.height };
+		renderPassBeginInfo.clearValueCount = sizeof(clearColor) / sizeof(VkClearValue);
+		renderPassBeginInfo.pClearValues = clearColor;
+		vkCmdBeginRenderPass(graphicsCommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 		vkCmdExecuteCommands(graphicsCommandBuffer, 1, &window->secondaryCommandBuffers[window->imageIndex]);
 
-	vkCmdEndRenderPass(graphicsCommandBuffer);
+		vkCmdEndRenderPass(graphicsCommandBuffer);
 
-	vkEndCommandBuffer(graphicsCommandBuffer);
+		vkEndCommandBuffer(graphicsCommandBuffer);
 
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	std::vector<VkSemaphore> waitSemaphores = { window->imageAvailableSemaphore };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		std::vector<VkSemaphore> waitSemaphores = { window->imageAvailableSemaphore };
 
-	VkSubmitInfo submitInfo;
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
-	submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
-	submitInfo.pWaitSemaphores = waitSemaphores.data();
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &graphicsCommandBuffer;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &window->renderDoneSemaphore;
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, setupFence);
-	
-	VkPresentInfoKHR presentInfo;
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = nullptr;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &window->renderDoneSemaphore;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &window->swapchain;
-	presentInfo.pImageIndices = &window->imageIndex;
-	presentInfo.pResults = nullptr;
-	vkQueuePresentKHR(graphicsQueue, &presentInfo);
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
+		submitInfo.pWaitSemaphores = waitSemaphores.data();
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &graphicsCommandBuffer;
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &window->renderDoneSemaphore;
+		vkQueueSubmit(graphicsQueue, 1, &submitInfo, setupFence);
+
+		VkPresentInfoKHR presentInfo;
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.pNext = nullptr;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = &window->renderDoneSemaphore;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = &window->swapchain;
+		presentInfo.pImageIndices = &window->imageIndex;
+		presentInfo.pResults = nullptr;
+		vkQueuePresentKHR(graphicsQueue, &presentInfo);
+	}
 
 	MSG msg;
 	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -1176,21 +977,33 @@ void GpuController::Run()
 }
 void GpuController::ShutDown()
 {
-	std::vector<VkS::Window*> windows = { window };
+	std::vector<VkU::Window*> windows = { window };
 
 	vkWaitForFences(device->handle, 1, &setupFence, VK_TRUE, ~0U);
 	for (size_t iWindow = 0; iWindow != windows.size(); ++iWindow)
 		vkWaitForFences(device->handle, (uint32_t)windows[iWindow]->fences.size(), windows[iWindow]->fences.data(), VK_TRUE, ~0U);
 
-	vkDeviceWaitIdle(device->handle);
+	//vkDeviceWaitIdle(device->handle);
 
-	/// Gpu controller stuff
 	// Descriptor Pool
 	vkDestroyDescriptorPool(device->handle, descriptorPool, nullptr);
 
-	// Sampler
-	vkDestroySampler(device->handle, nearestSampler, nullptr);
-	vkDestroySampler(device->handle, linearSampler, nullptr);
+	// Buffers
+	vkDestroyBuffer(device->handle, indexBuffer.handle, nullptr);
+	vkFreeMemory(device->handle, indexBuffer.memory, nullptr);
+
+	vkDestroyBuffer(device->handle, vertexBuffer.handle, nullptr);
+	vkFreeMemory(device->handle, vertexBuffer.memory, nullptr);
+
+	vkDestroyBuffer(device->handle, modelMatricesStagingBuffer.handle, nullptr);
+	vkFreeMemory(device->handle, modelMatricesStagingBuffer.memory, nullptr);
+	vkDestroyBuffer(device->handle, modelMatricesBuffer.handle, nullptr);
+	vkFreeMemory(device->handle, modelMatricesBuffer.memory, nullptr);
+
+	vkDestroyBuffer(device->handle, viewProjectionStagingBuffer.handle, nullptr);
+	vkFreeMemory(device->handle, viewProjectionStagingBuffer.memory, nullptr);
+	vkDestroyBuffer(device->handle, viewProjectionBuffer.handle, nullptr);
+	vkFreeMemory(device->handle, viewProjectionBuffer.memory, nullptr);
 
 	// Textures
 	vkDestroyImageView(device->handle, fontTexture.view, nullptr);
@@ -1205,23 +1018,6 @@ void GpuController::ShutDown()
 	vkDestroyImage(device->handle, rocksNormalTexture.handle, nullptr);
 	vkFreeMemory(device->handle, rocksNormalTexture.memory, nullptr);
 
-	// Buffers
-	vkDestroyBuffer(device->handle, indexBuffer.handle, nullptr);
-	vkFreeMemory(device->handle, indexBuffer.memory, nullptr);
-
-	vkDestroyBuffer(device->handle, vertexBuffer.handle, nullptr);
-	vkFreeMemory(device->handle, vertexBuffer.memory, nullptr);
-
-	vkDestroyBuffer(device->handle, modelMatricesBuffer.handle, nullptr);
-	vkFreeMemory(device->handle, modelMatricesBuffer.memory, nullptr);
-
-	vkDestroyBuffer(device->handle, viewProjectionBuffer.handle, nullptr);
-	vkFreeMemory(device->handle, viewProjectionBuffer.memory, nullptr);
-
-	vkDestroyBuffer(device->handle, stagingBuffer.handle, nullptr);
-	vkFreeMemory(device->handle, stagingBuffer.memory, nullptr);
-	delete[] stagingBufferData;
-
 	// Pipeline
 	for (size_t iPipeline = 0; iPipeline != graphicsPipelines.size(); ++iPipeline)
 		vkDestroyPipeline(device->handle, graphicsPipelines[iPipeline], nullptr);
@@ -1233,16 +1029,20 @@ void GpuController::ShutDown()
 	vkDestroyShaderModule(device->handle, vertexParallaxOcclusionShaderModule, nullptr);
 	vkDestroyShaderModule(device->handle, fragmentParallaxOcclusionShaderModule, nullptr);
 
+	// Sampler
+	vkDestroySampler(device->handle, nearestSampler, nullptr);
+	vkDestroySampler(device->handle, linearSampler, nullptr);
+
 	// PipelineLayout
-	vkDestroyPipelineLayout(device->handle, mvpPush8Vert8FragPipelineLayout, nullptr);
-	vkDestroyPipelineLayout(device->handle, push16Vert16Frag16GeomPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(device->handle, fontPush16Vert16Frag16GeomPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(device->handle, mvpDiffuseNormalPush8Vert8FragPipelineLayout, nullptr);
 
 	// DescriptorSetLayout
 	vkDestroyDescriptorSetLayout(device->handle, fontDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device->handle, diffuseNormalDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device->handle, mvpDescriptorSetLayout, nullptr);
 
-	/// Window Resources
+	// Window Resources
 	for (size_t iWindow = 0; iWindow != windows.size(); ++iWindow)
 	{
 		vkDestroySemaphore(device->handle, windows[iWindow]->renderDoneSemaphore, nullptr);
@@ -1261,6 +1061,7 @@ void GpuController::ShutDown()
 			vkDestroyImageView(device->handle, windows[iWindow]->depthImage->view, nullptr);
 
 			delete windows[iWindow]->depthImage;
+			windows[iWindow]->depthImage = nullptr;
 		}
 
 		for (size_t iView = 0; iView != windows[iWindow]->views.size(); ++iView)
@@ -1268,11 +1069,12 @@ void GpuController::ShutDown()
 
 		vkDestroySwapchainKHR(device->handle, windows[iWindow]->swapchain, nullptr);
 	}
-	// RenderPass
-	vkDestroyRenderPass(device->handle, renderPass, nullptr);
 
 	// CommandPool
 	vkDestroyCommandPool(device->handle, graphicsCommandPool, nullptr);
+
+	// RenderPass
+	vkDestroyRenderPass(device->handle, renderPass, nullptr);
 
 	// Fence
 	vkDestroyFence(device->handle, setupFence, nullptr);

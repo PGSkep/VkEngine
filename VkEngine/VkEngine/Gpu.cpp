@@ -21,10 +21,10 @@ void Gpu::Init()
 		};
 #if _DEBUG
 		createInstanceInfo.debugReportFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-		createInstanceInfo.debugReportCallback = VkA::DebugReportCallback;
+		createInstanceInfo.debugReportCallback = VkU::DebugReportCallback;
 #endif
 		createInstanceInfo.preferedDepthFormats = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D16_UNORM, VK_FORMAT_D16_UNORM_S8_UINT };
-		VkA::CreateInstance(instance, createInstanceInfo);
+		VkU::CreateInstance(instance, createInstanceInfo);
 	}
 
 	// Window
@@ -37,10 +37,10 @@ void Gpu::Init()
 		createWindowInfo.height = 600;
 		createWindowInfo.title = "title";
 		createWindowInfo.name = "name";
-		createWindowInfo.wndProc = VkA::WndProc;
+		createWindowInfo.wndProc = VkU::WndProc;
 		createWindowInfo.instance = instance.handle;
 		createWindowInfo.hasDepthBuffer = true;
-		VkA::CreateOSWindow(windows[0], createWindowInfo);
+		VkU::CreateOSWindow(windows[0], createWindowInfo);
 	}
 
 	// Device
@@ -60,7 +60,7 @@ void Gpu::Init()
 			VkU::CreateDeviceInfo::WindowProperties::GetWindowProperties({ VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR, },{ VK_PRESENT_MODE_MAILBOX_KHR, }),
 		};
 		createDeviceInfo.queuesProperties = {
-			VkU::CreateDeviceInfo::QueueProperties::GetQueueProperties(VkS::Device::QueueGroup::Requirements::GetRequirements(VK_QUEUE_GRAPHICS_BIT, true, 1.0f, 1)),
+			VkU::CreateDeviceInfo::QueueProperties::GetQueueProperties(VkU::Device::QueueGroup::Requirements::GetRequirements(VK_QUEUE_GRAPHICS_BIT, true, 1.0f, 1)),
 			//VkU::CreateDeviceInfo::QueueProperties::GetQueueProperties(VkS::Device::QueueGroup::Requirements::GetRequirements(VK_QUEUE_COMPUTE_BIT, false, 1.0f, 1)),
 		};
 		createDeviceInfo.deviceLayerNames = {
@@ -69,7 +69,7 @@ void Gpu::Init()
 #endif
 		};
 		createDeviceInfo.deviceExtensionNames = { "VK_KHR_swapchain", };
-		VkA::CreateDevice(device, createDeviceInfo);
+		VkU::CreateDevice(device, createDeviceInfo);
 	}
 }
 
@@ -78,6 +78,9 @@ void Gpu::ShutDown()
 	// Window
 	for (size_t iWindow = 0; iWindow != windows.size(); ++iWindow)
 	{
+		if(windows[iWindow].depthImage != nullptr)
+			delete windows[iWindow].depthImage;
+
 		vkDestroySurfaceKHR(instance.handle, windows[iWindow].surface, nullptr);
 
 		DestroyWindow(windows[iWindow].hWnd);

@@ -1,14 +1,14 @@
 #ifndef	GPU_H
 #define GPU_H
 
-#include "Vk.h"
+#include "VkU.h"
 
 class Gpu
 {
 public:
-	VkS::Instance instance;
-	std::vector<VkS::Window> windows;
-	VkS::Device device;
+	VkU::Instance instance;
+	std::vector<VkU::Window> windows;
+	VkU::Device device;
 
 	void Init();
 	void ShutDown();

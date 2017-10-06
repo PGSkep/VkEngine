@@ -1,85 +1,75 @@
 #ifndef	GPU_CONTROLLER_H
 #define GPU_CONTROLLER_H
 
-#include "Vk.h"
-
+#include "VkU.h"
+#include "Math3D.h"
 #include "Scene.h"
-#include "Timer.h"
-#include "Loader.h"
-#include "Input.h"
 
 class GpuController
 {
-	uint32_t indexCount;
-
-	Timer timer;
-	double lastTime;
-	double deltaTime;
-
-	Scene scene;
-
-	VkS::Device* device;
-	VkS::Window* window;
-	//VkS::Window* wireframeWindow;
+	// Init
+	VkU::Device* device;
+	VkU::Window* window;
 
 	uint32_t graphicsQueueGroupIndex;
 	VkQueue graphicsQueue;
-	//uint32_t computeQueueGroupIndex;
 
 	VkFence setupFence;
 
+	VkRenderPass renderPass;
+
 	VkCommandPool graphicsCommandPool;
 	VkCommandBuffer graphicsCommandBuffer;
-
-	VkRenderPass renderPass;
 
 	VkDescriptorSetLayout mvpDescriptorSetLayout;
 	VkDescriptorSetLayout diffuseNormalDescriptorSetLayout;
 	VkDescriptorSetLayout fontDescriptorSetLayout;
 
-	VkPipelineLayout mvpPush8Vert8FragPipelineLayout;
-	VkPipelineLayout push16Vert16Frag16GeomPipelineLayout;
+	VkPipelineLayout fontPush16Vert16Frag16GeomPipelineLayout;
+	VkPipelineLayout mvpDiffuseNormalPush8Vert8FragPipelineLayout;
 
+	VkSampler nearestSampler;
+	VkSampler linearSampler;
+
+	// Load
 	VkShaderModule vertexTextShaderModule;
 	VkShaderModule geometryTextShaderModule;
 	VkShaderModule fragmentTextShaderModule;
 	VkShaderModule vertexParallaxOcclusionShaderModule;
 	VkShaderModule fragmentParallaxOcclusionShaderModule;
 
-	VkS::PipelineData pipelineData;
+	VkU::PipelineData pipelineData;
 	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfos;
-
 	std::vector<VkPipeline> graphicsPipelines;
-	//VkPipeline computePipeline;
-
 	VkPipeline textPipeline;
 	VkPipeline parallaxOcclusionPipeline;
 
-	void* stagingBufferData;
-	VkS::Buffer stagingBuffer;
-	Math3D::Mat4 viewProjectionData[2];
-	VkS::Buffer viewProjectionBuffer;
-	Math3D::Mat4 modelMatricesData[1024];
-	VkS::Buffer modelMatricesBuffer;
-	VkS::Buffer vertexBuffer;
-	VkS::Buffer indexBuffer;
+	VkU::Texture fontTexture;
+	VkU::Texture rocksDiffuseTexture;
+	VkU::Texture rocksNormalTexture;
 
-	VkS::Texture fontTexture;
-	VkS::Texture rocksDiffuseTexture;
-	VkS::Texture rocksNormalTexture;
+	VkU::Buffer viewProjectionBuffer;
+	VkU::Buffer viewProjectionStagingBuffer;
+	VkU::Buffer modelMatricesBuffer;
+	VkU::Buffer modelMatricesStagingBuffer;
+	VkU::Buffer vertexBuffer;
+	VkU::Buffer indexBuffer;
 
-	VkSampler nearestSampler;
-	VkSampler linearSampler;
-	
+	// Setup
 	VkDescriptorPool descriptorPool;
-	
+
+	VkDescriptorSet fontDescriptorSet;
 	VkDescriptorSet mvpDescriptorSet;
 	VkDescriptorSet diffuseNormalDescriptorSet;
-	VkDescriptorSet fontDescriptorSet;
 
 public:
-	void Init(VkS::Device* _device);
-	void Run();
+	void Init(VkU::Device* _device);
+	void Load(Scene& _scene);
+	void Setup(Scene& _scene);
+
+	void Compute() {};
+	void Render(Scene& _scene, float _time, float _deltaTime);
+
 	void ShutDown();
 };
 

@@ -402,7 +402,7 @@ public:
 		return mouseDelta[1];
 	}
 
-	void SetActiveKeys(std::vector<KEYS>* _activeKeys)
+	static void SetActiveKeys(std::vector<KEYS>* _activeKeys)
 	{
 		activeKeys = _activeKeys;
 	}
