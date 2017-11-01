@@ -13,77 +13,62 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\shader.comp">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="Shaders\shader.frag">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="Shaders\shader.vert">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="Shaders\shader.geom">
-      <Filter>Resource Files</Filter>
-    </None>
+    <Filter Include="Source Files\Common">
+      <UniqueIdentifier>{6a376442-e10d-4afc-806b-b100d75a01e7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Gpu.cpp">
+    <ClCompile Include="..\_Common\Vulkan\Gpu.cpp">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\_Common\Input.cpp">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\_Common\Vulkan\VkU.cpp">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="GameplayBreakout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GpuController.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Input.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VkU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Globals.cpp">
+    <ClCompile Include="GpuBreakout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DataPack.h">
+    <ClInclude Include="Block.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Definitions.h">
+    <ClInclude Include="Paddle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Gpu.h">
+    <ClInclude Include="Ball.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GpuController.h">
+    <ClInclude Include="GameObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Input.h">
+    <ClInclude Include="GameplayBreakout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Loader.h">
+    <ClInclude Include="GpuBreakout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Math3D.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Timer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VkU.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Globals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\_Data\Shaders\shader.comp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\_Data\Shaders\shader.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\_Data\Shaders\shader.geom">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\_Data\Shaders\shader.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

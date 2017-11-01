@@ -10,6 +10,8 @@
 
 #include "Input.h"
 
+#include "Globals.h"
+
 void GpuController::Init(VkU::Device* _device)
 {
 	device = _device;
@@ -263,7 +265,7 @@ void GpuController::Init(VkU::Device* _device)
 		vkCreateSampler(device->handle, &samplerCreateInfo, nullptr, &linearSampler);
 	}
 }
-void GpuController::Load(Scene& _scene)
+void GpuController::Load(Scene& _scene, DataPack& _dataPack)
 {
 	// Shader Modules
 	{
@@ -271,17 +273,17 @@ void GpuController::Load(Scene& _scene)
 		createShaderModuleInfo.vkDevice = device->handle;
 
 		// Text
-		createShaderModuleInfo.filename = "Shaders/Text/vert.spv";
+		createShaderModuleInfo.filename = "../_Data/Shaders/Text/vert.spv";
 		VkU::CreateShaderModule(vertexTextShaderModule, createShaderModuleInfo);
-		createShaderModuleInfo.filename = "Shaders/Text/geom.spv";
+		createShaderModuleInfo.filename = "../_Data/Shaders/Text/geom.spv";
 		VkU::CreateShaderModule(geometryTextShaderModule, createShaderModuleInfo);
-		createShaderModuleInfo.filename = "Shaders/Text/frag.spv";
+		createShaderModuleInfo.filename = "../_Data/Shaders/Text/frag.spv";
 		VkU::CreateShaderModule(fragmentTextShaderModule, createShaderModuleInfo);
 
 		// Parallax Occlusion
-		createShaderModuleInfo.filename = "Shaders/Parallax Occlusion/vert.spv";
+		createShaderModuleInfo.filename = "../_Data/Shaders/Parallax Occlusion/vert.spv";
 		VkU::CreateShaderModule(vertexParallaxOcclusionShaderModule, createShaderModuleInfo);
-		createShaderModuleInfo.filename = "Shaders/Parallax Occlusion/frag.spv";
+		createShaderModuleInfo.filename = "../_Data/Shaders/Parallax Occlusion/frag.spv";
 		VkU::CreateShaderModule(fragmentParallaxOcclusionShaderModule, createShaderModuleInfo);
 	}
 
@@ -608,28 +610,40 @@ void GpuController::Load(Scene& _scene)
 		createTextureInfo.setupQueue = graphicsQueue;
 
 		// Font
-		textureData.LoadTGA("Textures/font3.tga");
+		textureData.LoadTGA("../_Data/Textures/font3.tga");
 		VkU::CreateTexture(fontTexture, createTextureInfo);
 
 		// Diffuse
-		textureData.LoadTGA("Textures/rocks diffuse.tga");
+		textureData.LoadTGA("../_Data/Textures/rocks diffuse.tga");
 		VkU::CreateTexture(rocksDiffuseTexture, createTextureInfo);
 
 		// Normal
-		textureData.LoadTGA("Textures/rocks normal.tga");
+		textureData.LoadTGA("../_Data/Textures/rocks normal.tga");
 		VkU::CreateTexture(rocksNormalTexture, createTextureInfo);
 	}
 
 	// Buffers
 	{
-		Loader::ModelData modelDataCube;
-		modelDataCube.LoadModel("Models/cube.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
+		//Loader::ModelData modelDataCube;
+		//modelDataCube.LoadModel("Models/cube.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
+		//
+		//Loader::ModelData modelDataSphere;
+		//modelDataSphere.LoadModel("Models/Sphere.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
+		//
+		//Loader::ModelData modelDataMonkey;
+		//modelDataMonkey.LoadModel("Models/monkey.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
 
-		Loader::ModelData modelDataSphere;
-		modelDataSphere.LoadModel("Models/Sphere.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
-		
-		Loader::ModelData modelDataMonkey;
-		modelDataMonkey.LoadModel("Models/monkey.fbx", Definitions::VDT_X | Definitions::VDT_Y | Definitions::VDT_Z | Definitions::VDT_UV | Definitions::VDT_NORMAL | Definitions::VDT_TANGENT_BITANGENT, true);
+		std::vector<Loader::ModelData> modelDatas(_dataPack.meshes.size());
+		offsetsAndSizes.resize(_dataPack.meshes.size());
+		VkDeviceSize vertexOffset = 0;
+		VkDeviceSize indexOffset = 0;
+		for (size_t iMesh = 0; iMesh != _dataPack.meshes.size(); ++iMesh)
+		{
+			modelDatas[iMesh].LoadModel(_dataPack.meshes[iMesh].filename.c_str(), _dataPack.meshes[iMesh].datatype, true);
+			offsetsAndSizes[iMesh] = VkU::VertexAneIndexOffsetAndSize::GetVertexAneIndexOffsetAndSize(vertexOffset, VK_INDEX_TYPE_UINT16, indexOffset, modelDatas[iMesh].indexDataCount);
+			vertexOffset += modelDatas[iMesh].vertexDataSize;
+			indexOffset += modelDatas[iMesh].indexDataSize;
+		}
 
 		VkU::CreateBufferInfo createBufferInfo;
 		createBufferInfo.vkDevice = device->handle;
@@ -646,19 +660,15 @@ void GpuController::Load(Scene& _scene)
 		createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		VkU::CreateBuffer(modelMatricesBuffer, &modelMatricesStagingBuffer, createBufferInfo);
 
-		createBufferInfo.datas = {
-			VkU::Data::GetData(modelDataCube.vertexData, modelDataCube.vertexDataSize),
-			VkU::Data::GetData(modelDataSphere.vertexData, modelDataSphere.vertexDataSize),
-			VkU::Data::GetData(modelDataMonkey.vertexData, modelDataMonkey.vertexDataSize),
-		};
+		createBufferInfo.datas.resize(modelDatas.size());
+
+		for (size_t iMesh = 0; iMesh != modelDatas.size(); ++iMesh)
+			createBufferInfo.datas[iMesh] = VkU::Data::GetData(modelDatas[iMesh].vertexData, modelDatas[iMesh].vertexDataSize);
 		createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		VkU::CreateBuffer(vertexBuffer, nullptr, createBufferInfo);
 
-		createBufferInfo.datas = {
-			VkU::Data::GetData(modelDataCube.indexData, modelDataCube.indexDataSize),
-			VkU::Data::GetData(modelDataSphere.indexData, modelDataSphere.indexDataSize),
-			VkU::Data::GetData(modelDataMonkey.indexData, modelDataMonkey.indexDataSize),
-		};
+		for (size_t iMesh = 0; iMesh != modelDatas.size(); ++iMesh)
+			createBufferInfo.datas[iMesh] = VkU::Data::GetData(modelDatas[iMesh].indexData, modelDatas[iMesh].indexDataSize);
 		createBufferInfo.bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		VkU::CreateBuffer(indexBuffer, nullptr, createBufferInfo);
 	}
@@ -803,7 +813,7 @@ void GpuController::Setup(Scene& _scene)
 		vkUpdateDescriptorSets(device->handle, (uint32_t)writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
 	}
 }
-void GpuController::Render(Scene& _scene, float _time, float _deltaTime)
+void GpuController::Render(Scene& _scene, float _time)
 {
 	// Draw on secondary command buffer
 	{
@@ -829,7 +839,7 @@ void GpuController::Render(Scene& _scene, float _time, float _deltaTime)
 
 		vkBeginCommandBuffer(window->secondaryCommandBuffers[window->imageIndex], &commandBufferBeginInfo);
 
-		VkDeviceSize offset = 0;
+		uint32_t meshID = 0;
 		{
 			// parallax occlusion
 			vkCmdBindPipeline(window->secondaryCommandBuffers[window->imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, parallaxOcclusionPipeline);
@@ -853,24 +863,24 @@ void GpuController::Render(Scene& _scene, float _time, float _deltaTime)
 			if (!Input::GetKeyInputState(Input::KEY_SHIFT) == Input::INPUT_STATE_IDLE)
 			{
 				if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.heightScale += 0.1f * _deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.heightScale += 0.1f * (float)Globals::deltaTime;
 				if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.heightScale -= 0.1f * _deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.heightScale -= 0.1f * (float)Globals::deltaTime;
 			}
 			else
 			{
 				if (Input::GetKeyInputState(Input::KEY_UNDERSCORE) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.numLayers += 2.0f * _deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.numLayers += 2.0f * (float)Globals::deltaTime;
 				if (Input::GetKeyInputState(Input::KEY_EQUAL) == Input::INPUT_STATE_DOWN)
-					parallaxOcclusionFragmentShaderPushConstantData.numLayers -= 2.0f * _deltaTime;
+					parallaxOcclusionFragmentShaderPushConstantData.numLayers -= 2.0f * (float)Globals::deltaTime;
 			}
 			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpDiffuseNormalPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ParallaxOcclusionVertexShaderPushConstantData), &parallaxOcclusionVertexShaderPushConstantData);
 			vkCmdPushConstants(window->secondaryCommandBuffers[window->imageIndex], mvpDiffuseNormalPush8Vert8FragPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(ParallaxOcclusionVertexShaderPushConstantData), sizeof(ParallaxOcclusionFragmentShaderPushConstantData), &parallaxOcclusionFragmentShaderPushConstantData);
 
-			vkCmdBindVertexBuffers(window->secondaryCommandBuffers[window->imageIndex], 0, 1, &vertexBuffer.handle, &offset);
-			vkCmdBindIndexBuffer(window->secondaryCommandBuffers[window->imageIndex], indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindVertexBuffers(window->secondaryCommandBuffers[window->imageIndex], 0, 1, &vertexBuffer.handle, &offsetsAndSizes[meshID].vertexOffset);
+			vkCmdBindIndexBuffer(window->secondaryCommandBuffers[window->imageIndex], indexBuffer.handle, offsetsAndSizes[meshID].indexOffset, offsetsAndSizes[meshID].indexType);
 
-			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], 36, 1, 0, 0, 0);
+			vkCmdDrawIndexed(window->secondaryCommandBuffers[window->imageIndex], offsetsAndSizes[meshID].indexCount, 1, 0, 0, 0);
 
 			// text
 			for (size_t iTexts = 0; iTexts != _scene.texts2D.size(); ++iTexts)

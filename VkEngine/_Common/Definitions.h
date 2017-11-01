@@ -1,0 +1,50 @@
+#ifndef	DEFINITIONS_H
+#define DEFINITIONS_H
+
+namespace Definitions
+{
+	enum TEXTURE_DATATYPE
+	{
+		TDT_NONE = 0x0000,
+
+		TDT_R8 = 0x0001,
+		TDT_G8 = 0x0002,
+		TDT_B8 = 0x0004,
+		TDT_A8 = 0x0008,
+
+		TDT_R8G8B8 = TDT_R8 | TDT_G8 | TDT_B8,
+		TDT_R8G8B8A8 = TDT_R8G8B8 | TDT_A8,
+
+		TDT_B8G8R8 = ~TDT_R8G8B8,
+		TDT_B8G8R8A8 = ~TDT_R8G8B8A8,
+	};
+
+	enum VERTEX_DATATYPE
+	{
+		// (VDT_X | VDT_Y) is valid, (VDT_Y | VDT_Z) is not, same follows for RGBA and NTB
+		VDT_NONE = 0x0000,
+
+		VDT_X = 0x0001,
+		VDT_Y = 0x0002,
+		VDT_Z = 0x0004,
+		VDT_UV = 0x0008,
+
+		VDT_R = 0x0010,
+		VDT_G = 0x0020,
+		VDT_B = 0x0040,
+		VDT_A = 0x0080,
+
+		VDT_SKELETON_4_BONE_PER_VERTEX = 0x0100,
+		VDT_SKELETON_BONE_INDEX_SIZE_8 = 0x0200,
+		VDT_SKELETON_BONE_INDEX_SIZE_16 = 0x0400,
+
+		//0x0800
+
+		VDT_NORMAL = 0x1000,
+		VDT_TANGENT_BITANGENT = 0x2000,
+
+		VDT_MAX = 0x80000000
+	};
+};
+
+#endif

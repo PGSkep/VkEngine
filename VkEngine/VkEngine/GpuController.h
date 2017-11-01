@@ -4,6 +4,7 @@
 #include "VkU.h"
 #include "Math3D.h"
 #include "Scene.h"
+#include "DataPack.h"
 
 class GpuController
 {
@@ -52,6 +53,8 @@ class GpuController
 	VkU::Buffer viewProjectionStagingBuffer;
 	VkU::Buffer modelMatricesBuffer;
 	VkU::Buffer modelMatricesStagingBuffer;
+
+	std::vector<VkU::VertexAneIndexOffsetAndSize> offsetsAndSizes;
 	VkU::Buffer vertexBuffer;
 	VkU::Buffer indexBuffer;
 
@@ -64,11 +67,11 @@ class GpuController
 
 public:
 	void Init(VkU::Device* _device);
-	void Load(Scene& _scene);
+	void Load(Scene& _scene, DataPack& _dataPack);
 	void Setup(Scene& _scene);
 
 	void Compute() {};
-	void Render(Scene& _scene, float _time, float _deltaTime);
+	void Render(Scene& _scene, float _time);
 
 	void ShutDown();
 };

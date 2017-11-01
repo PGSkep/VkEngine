@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+
 #include <vulkan\vulkan.h>
 
 class Scene
@@ -12,19 +13,11 @@ class Scene
 public:
 	bool done;
 
-	Math3D::Mat4 viewProjectionData[2];
+	static Math3D::Mat4 viewProjectionData[2];
 	std::vector<Math3D::Mat4> modelMatrices;
 
+//*
 	// data
-	struct Camera
-	{
-		Math3D::Vec3 up;
-		Math3D::Vec3 position;
-
-		Math3D::Mat4 view;
-		Math3D::Mat4 perspective;
-	};
-
 	struct Text2D
 	{
 		Math3D::Vec2 position;
@@ -77,32 +70,73 @@ public:
 			}
 		}
 	};
+	struct Camera
+	{
+		Math3D::Vec3 up;
+		Math3D::Vec3 position;
+
+		Math3D::Mat4 view;
+		Math3D::Mat4 projection;
+
+		Camera()
+		{
+			up = { 0.0f, 1.0f, 0.0f };
+			position = { 0.0f, 0.0f, 0.0f };
+			view = { 0.0f, 0.0f, 0.0f, 0.0f };
+			projection = { 0.0f, 0.0f, 0.0f, 0.0f };
+		}
+	};
+	struct Model
+	{
+		bool visible;
+		Math3D::Mat4 transform;
+		VkPipeline pipeline;
+	};
 
 	// object
-	struct Object
+	struct GameObject
 	{
+		std::string name;
+
 		struct Data
 		{
-			char* name;
 			void* data;
-		};
-		struct Module
-		{
-			char* name;
-			Data* data;
-			void(*function)(void* _data);
+			void(*destructor)(void* _data);
+
+			static inline Data GetData(void* _data, void(*_destructor)(void*))
+			{
+				return { _data, _destructor };
+			};
 		};
 		std::vector<Data> datas;
+
+		struct Module
+		{
+			std::string name;
+			void* data;
+			std::vector<void(*)(void* _data)> functions;
+
+			static inline Module GetModule(std::string _name, void* _data, std::vector<void(*)(void*)> _functions)
+			{
+				return { _name, _data, _functions };
+			}
+		};
 		std::vector<Module> modules;
+
+		static inline GameObject GetGameObject(std::string _name, std::vector<Data> _datas, std::vector<Module> _modules)
+		{
+			return { _name, _datas, _modules };
+		};
 	};
 
 	Camera camera;
-	std::vector<Object> objects;
+	static std::vector<GameObject> gameObjects;
 	std::vector<Text2D> texts2D;
 
 	void Load();
-	void Update(float _deltaTime);
-	void ShutDown() {};
+	void Update();
+	void ShutDown();
 };
+//*/
 
 #endif

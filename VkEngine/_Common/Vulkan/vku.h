@@ -9,8 +9,7 @@
 #include <vector>
 #include <iostream>
 
-//#include "Definitions.h"
-#include "Loader.h"
+#include "../Loader.h"
 
 namespace VkU
 {
@@ -281,14 +280,14 @@ namespace VkU
 			return { _data, _size };
 		}
 	};
-	struct VertexAneIndexOffsetAndSize
+	struct VertexAndIndexOffsetAndSize
 	{
 		VkDeviceSize	vertexOffset;
 		VkIndexType		indexType;
 		VkDeviceSize	indexOffset;
 		uint32_t		indexCount;
 
-		static inline VertexAneIndexOffsetAndSize GetVertexAneIndexOffsetAndSize(VkDeviceSize _vertexOffset, VkIndexType _indexType, VkDeviceSize _indexOffset, uint32_t _indexCount)
+		static inline VertexAndIndexOffsetAndSize GetVertexAndIndexOffsetAndSize(VkDeviceSize _vertexOffset, VkIndexType _indexType, VkDeviceSize _indexOffset, uint32_t _indexCount)
 		{
 			return { _vertexOffset, _indexType, _indexOffset, _indexCount };
 		}
@@ -413,7 +412,7 @@ namespace VkU
 	void CopyBufferCmd(CopyBuffersInfo _copyBuffersInfo);
 
 	uint32_t GetVertexStride(Definitions::VERTEX_DATATYPE _vertexDatatype);
-	std::vector<VkVertexInputAttributeDescription> GetVertexInputAttributeDescriptions(Definitions::VERTEX_DATATYPE _vertexDatatype);
+	std::vector<VkVertexInputAttributeDescription> GetVertexInputAttributeDescriptions(uint32_t _binding, Definitions::VERTEX_DATATYPE _vertexDatatype);
 }
 
 #endif

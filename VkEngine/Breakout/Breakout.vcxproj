@@ -20,8 +20,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{6D91BAEF-26F5-4EBA-B9F3-AE8FD0100482}</ProjectGuid>
-    <RootNamespace>VkEngine</RootNamespace>
+    <ProjectGuid>{0D512CF1-EECC-457E-BB72-ACE2F775AFDB}</ProjectGuid>
+    <RootNamespace>Breakout</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -70,13 +70,6 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -89,6 +82,13 @@
       <AdditionalLibraryDirectories>..\External\lib\x64 Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -121,32 +121,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="Shaders\shader.comp" />
-    <None Include="Shaders\shader.frag" />
-    <None Include="Shaders\shader.geom" />
-    <None Include="Shaders\shader.vert" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="Globals.cpp" />
-    <ClCompile Include="Gpu.cpp" />
-    <ClCompile Include="GpuController.cpp" />
-    <ClCompile Include="Input.cpp" />
-    <ClCompile Include="Scene.cpp" />
-    <ClCompile Include="VkU.cpp" />
+    <ClCompile Include="..\_Common\Input.cpp" />
+    <ClCompile Include="..\_Common\Vulkan\Gpu.cpp" />
+    <ClCompile Include="..\_Common\Vulkan\VkU.cpp" />
+    <ClCompile Include="GameplayBreakout.cpp" />
+    <ClCompile Include="GpuBreakout.cpp" />
     <ClCompile Include="_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DataPack.h" />
-    <ClInclude Include="Definitions.h" />
-    <ClInclude Include="Globals.h" />
-    <ClInclude Include="Gpu.h" />
-    <ClInclude Include="GpuController.h" />
-    <ClInclude Include="Input.h" />
-    <ClInclude Include="Loader.h" />
-    <ClInclude Include="Math3D.h" />
-    <ClInclude Include="Scene.h" />
-    <ClInclude Include="Timer.h" />
-    <ClInclude Include="VkU.h" />
+    <ClInclude Include="Ball.h" />
+    <ClInclude Include="Block.h" />
+    <ClInclude Include="GameObject.h" />
+    <ClInclude Include="GameplayBreakout.h" />
+    <ClInclude Include="GpuBreakout.h" />
+    <ClInclude Include="Paddle.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\_Data\Shaders\shader.comp" />
+    <None Include="..\_Data\Shaders\shader.frag" />
+    <None Include="..\_Data\Shaders\shader.geom" />
+    <None Include="..\_Data\Shaders\shader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
